@@ -31,9 +31,7 @@ pyarduboy/
 │           ├── evdev_keyboard.py  # Evdev 键盘驱动 
 │           └── base.py         # 输入驱动基类
 ├── examples/                     # 示例代码
-│   ├── basic_demo.py            # 基础示例
-│   ├── oled_demo.py             # OLED 显示示例
-│   └── custom_driver_demo.py    # 自定义驱动示例
+│   └── ...                      # 基础示例
 ├── core/                        # 编译好的核心文件目录
 ├── roms/                        # 游戏 ROM 目录
 ├── docs/                        # 文档
@@ -41,9 +39,6 @@ pyarduboy/
 │   ├── AUDIO_SETUP.md          # 音频设置指南 
 │   └── PROJECT_SUMMARY.md      # 项目总结
 ├── run.py               # 完整硬件模拟器主程序 
-├── test_keyboard.py             # 键盘测试工具 
-├── test_evdev_raw.py            # 原始输入测试 
-├── list_devices.py              # 设备列表工具 
 ├── venv/                        # Python 虚拟环境
 └── requirements.txt             # Python 依赖
 ```
