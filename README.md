@@ -15,7 +15,7 @@
 ## 目录结构
 
 ```
-arduboy_pi/
+pyarduboy/
 ├── pyarduboy/                    # 核心 Python 库
 │   ├── __init__.py              # 库初始化
 │   ├── core.py                  # PyArduboy 核心类
@@ -25,10 +25,10 @@ arduboy_pi/
 │       │   ├── luma_oled.py    # Luma.OLED 驱动（SPI/I2C）
 │       │   └── null.py         # 空驱动（测试用）
 │       ├── audio/               # 音频驱动
-│       │   ├── alsa.py         # ALSA 音频驱动 ⭐ NEW
+│       │   ├── alsa.py         # ALSA 音频驱动 
 │       │   └── null.py         # 空驱动
 │       └── input/               # 输入驱动
-│           ├── evdev_keyboard.py  # Evdev 键盘驱动 ⭐ NEW
+│           ├── evdev_keyboard.py  # Evdev 键盘驱动 
 │           └── base.py         # 输入驱动基类
 ├── examples/                     # 示例代码
 │   ├── basic_demo.py            # 基础示例
@@ -38,12 +38,12 @@ arduboy_pi/
 ├── roms/                        # 游戏 ROM 目录
 ├── docs/                        # 文档
 │   ├── QUICKSTART.md           # 快速开始指南
-│   ├── AUDIO_SETUP.md          # 音频设置指南 ⭐ NEW
+│   ├── AUDIO_SETUP.md          # 音频设置指南 
 │   └── PROJECT_SUMMARY.md      # 项目总结
-├── run_arduboy.py               # 完整硬件模拟器主程序 ⭐ NEW
-├── test_keyboard.py             # 键盘测试工具 ⭐ NEW
-├── test_evdev_raw.py            # 原始输入测试 ⭐ NEW
-├── list_devices.py              # 设备列表工具 ⭐ NEW
+├── run.py               # 完整硬件模拟器主程序 
+├── test_keyboard.py             # 键盘测试工具 
+├── test_evdev_raw.py            # 原始输入测试 
+├── list_devices.py              # 设备列表工具 
 ├── venv/                        # Python 虚拟环境
 └── requirements.txt             # Python 依赖
 ```
@@ -89,8 +89,8 @@ arduboy_pi/
 ```bash
 # 克隆项目
 cd /home/pi/workspace
-git clone <your-repo-url> arduboy_pi
-cd arduboy_pi
+git clone <your-repo-url> pyarduboy
+cd pyarduboy
 
 # 运行一键安装脚本
 chmod +x install.sh
@@ -175,7 +175,7 @@ ls /dev/spidev*
 
 ```bash
 # 需要 root 权限访问键盘设备
-sudo python3 run_arduboy.py roms/your_game.hex
+python3 run.py roms/your_game.hex
 ```
 
 **硬件连接（SSD1309 SPI OLED）：**
@@ -268,78 +268,13 @@ deactivate
 
 ### 物理键盘（evdev）
 
-主程序 `run_arduboy.py` 使用的按键映射：
+主程序 `run.py` 使用的按键映射：
 
 - **W / S / A / D** - 方向键（上/下/左/右）
 - **K** - A 按钮
 - **J** - B 按钮
 - **R** - Reset（重新加载游戏）
 - **Ctrl+C** - 退出
-
-### 测试工具
-
-```bash
-# 测试键盘输入
-sudo python3 test_keyboard.py
-
-# 查看原始输入事件
-sudo python3 test_evdev_raw.py
-
-# 列出所有输入设备
-sudo python3 list_devices.py
-```
-
-## 自定义驱动开发
-
-PyArduboy 使用插件式驱动系统，可以轻松创建自定义驱动。
-
-### 创建自定义视频驱动
-
-```python
-import numpy as np
-from pyarduboy import VideoDriver
-
-class MyCustomDriver(VideoDriver):
-    """自定义视频驱动"""
-
-    def init(self, width: int, height: int) -> bool:
-        """初始化驱动"""
-        self._width = width
-        self._height = height
-        self._running = True
-        # 你的初始化代码
-        return True
-
-    def render(self, frame_buffer: np.ndarray) -> None:
-        """渲染一帧"""
-        # frame_buffer 是 (height, width, 3) 的 RGB 数组
-        # 在这里实现你的渲染逻辑
-        pass
-
-    def close(self) -> None:
-        """关闭驱动"""
-        self._running = False
-        # 清理资源
-
-    @property
-    def is_running(self) -> bool:
-        return self._running
-```
-
-### 使用自定义驱动
-
-```python
-from pyarduboy import PyArduboy
-
-arduboy = PyArduboy(
-    core_path="./core/arduous_libretro.so",
-    game_path="./game.hex"
-)
-
-# 使用自定义驱动
-arduboy.set_video_driver(MyCustomDriver())
-arduboy.run()
-```
 
 ## API 文档
 
@@ -386,67 +321,6 @@ PyArduboy(
 - [ArduboyCollection](https://github.com/eried/ArduboyCollection)
 
 游戏文件格式为 `.hex` 文件。
-
-## 故障排除
-
-### 键盘无法输入
-
-```bash
-# 需要 root 权限
-sudo python3 run_arduboy.py
-
-# 或添加用户到 input 组
-sudo usermod -a -G input $USER
-# 重新登录后生效
-```
-
-### OLED 无显示
-
-```bash
-# 检查 SPI 是否启用
-ls /dev/spidev*
-
-# 应该看到：/dev/spidev0.0  /dev/spidev0.1
-
-# 检查 luma.oled 安装
-pip3 install luma.oled
-```
-
-### 音频没有声音
-
-```bash
-# 检查音量
-alsamixer
-
-# 测试音频
-speaker-test -t wav -c 2
-
-# 详细配置见文档
-cat docs/AUDIO_SETUP.md
-```
-
-### libretro.py 未找到
-
-```bash
-pip3 install libretro.py
-```
-
-### 核心加载失败
-
-检查核心文件是否存在：
-
-```bash
-ls -lh core/arduous_libretro.so
-```
-
-如果不存在，运行 `./build_core.sh` 重新编译。
-
-### 性能问题（帧率低）
-
-1. 确保使用 Release 模式编译核心
-2. 音频缓冲区已优化（period_size=4096）
-3. 使用非阻塞音频模式（已默认启用）
-4. 如果仍然卡顿，禁用音频：编辑 `run_arduboy.py` 使用 `NullAudioDriver()`
 
 ## 许可证
 
