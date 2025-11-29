@@ -181,8 +181,8 @@ sudo python3 run_arduboy.py roms/your_game.hex
 **硬件连接（SSD1309 SPI OLED）：**
 ```
 树莓派引脚        OLED 模块
-Pin 19 (MOSI)   → SDA/MOSI
-Pin 23 (SCLK)   → SCL/SCK
+Pin 19 (MOSI)   → DIN
+Pin 23 (SCLK)   → CLK
 Pin 24 (CE0)    → CS
 Pin 22 (GPIO25) → DC
 Pin 13 (GPIO27) → RST
