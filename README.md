@@ -212,56 +212,8 @@ arduboy = PyArduboy(
 # 设置驱动
 arduboy.set_video_driver(NullVideoDriver())
 
-# 运行游戏（600 帧后自动停止）
-arduboy.run(max_frames=600)
-```
-
-### OLED 显示示例
-
-```python
-from pyarduboy import PyArduboy
-from pyarduboy.drivers.video.luma_oled import LumaOLED32Driver
-from pyarduboy.drivers.input.keyboard import KeyboardInputDriver
-
-# 创建实例
-arduboy = PyArduboy(
-    core_path="./core/arduous_libretro.so",
-    game_path="./roms/2048.hex"
-)
-
-# 设置 OLED 驱动（128x32 显示屏）
-video_driver = LumaOLED32Driver(
-    device_type='ssd1305',  # 或 'ssd1306'
-    interface='i2c',
-    rotate=2
-)
-arduboy.set_video_driver(video_driver)
-
-# 设置键盘输入
-arduboy.set_input_driver(KeyboardInputDriver())
-
 # 运行游戏
 arduboy.run()
-```
-
-### 运行预置示例
-
-```bash
-# 激活虚拟环境
-source venv/bin/activate
-
-# 基础示例（无显示）
-cd examples
-python basic_demo.py ../roms/your_game.hex
-
-# OLED 显示示例
-python oled_demo.py ../roms/your_game.hex
-
-# 自定义驱动示例（保存帧为图片）
-python custom_driver_demo.py ../roms/your_game.hex
-
-# 退出虚拟环境
-deactivate
 ```
 
 ## 控制按键
