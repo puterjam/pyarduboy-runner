@@ -1,171 +1,403 @@
-# 树莓派 Arduboy 模拟器
+# PyArduboy - Arduboy 模拟器 Python 库
 
-在树莓派上运行 Arduboy 游戏的完整硬件模拟器。
+在树莓派上运行 Arduboy 游戏的 Python 库，支持 OLED 显示屏输出。
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.7+-green.svg)
-![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi-red.svg)
+## 项目特点
 
-## ✨ 特性
+- 🎮 **完整硬件支持**：OLED 显示屏、USB 键盘输入、音频输出
+- 🔌 **插件式驱动系统**：支持自定义视频、音频、输入驱动
+- 📺 **真实 OLED 显示**：支持 SSD1309 SPI 显示屏（128x64）
+- ⌨️ **物理键盘输入**：基于 evdev 的低延迟键盘支持
+- 🔊 **ALSA 音频**：支持 HDMI 和耳机孔音频输出
+- 🚀 **高性能**：优化后稳定 60 FPS
+- 🛠️ **易扩展**：清晰的架构设计，便于扩展到其他平台
 
-- 🎮 **完整硬件支持** - OLED 显示屏、USB 键盘、音频输出
-- 🖥️ **真实 OLED 显示** - 支持 SSD1309 SPI 显示屏（128x64）
-- ⌨️ **物理键盘输入** - 使用 evdev 直接读取键盘事件
-- 🔊 **ALSA 音频** - 支持 HDMI/耳机孔音频输出
-- ⚡ **高性能** - 优化后稳定 60 FPS
-- 🔧 **插件化架构** - 可自定义视频、音频、输入驱动
-- 🎯 **即插即用** - 简单的 Python API
-
-## 📋 硬件要求
-
-| 组件 | 规格 | 备注 |
-|------|------|------|
-| **树莓派** | Pi 4/5 推荐 | Pi 3 也可运行，性能稍低 |
-| **OLED 显示屏** | SSD1309, 128x64, SPI | 用于游戏显示 |
-| **USB 键盘** | 任意标准键盘 | 用于游戏控制 |
-| **音频输出** | HDMI 或 3.5mm | 可选，用于声音 |
-| **存储空间** | 500MB+ | 用于依赖和游戏 |
-
-## 🚀 快速开始
-
-### 1. 克隆项目
-
-```bash
-git clone https://github.com/your-username/arduboy_pi.git
-cd arduboy_pi
-```
-
-### 2. 安装依赖
-
-```bash
-# 安装系统依赖
-sudo apt-get update
-sudo apt-get install -y build-essential cmake python3-pip \
-                        python3-evdev python3-alsaaudio
-
-# 安装 Python 库
-pip3 install -r requirements.txt
-```
-
-### 3. 编译核心
-
-```bash
-chmod +x build_core.sh
-./build_core.sh
-```
-
-### 4. 连接硬件
-
-**OLED 显示屏（SPI 接口）：**
-```
-树莓派          OLED
-Pin 19 (MOSI) → SDA
-Pin 23 (SCLK) → SCL
-Pin 24 (CE0)  → CS
-Pin 22 (GPIO25) → DC
-Pin 13 (GPIO27) → RST
-Pin 1  (3.3V) → VCC
-Pin 6  (GND)  → GND
-```
-
-**启用 SPI：**
-```bash
-sudo raspi-config
-# Interface Options → SPI → Yes
-sudo reboot
-```
-
-### 5. 运行游戏
-
-```bash
-sudo python3 run_arduboy.py roms/your_game.hex
-```
-
-## 🎮 控制说明
-
-| 按键 | 功能 |
-|------|------|
-| **W / S / A / D** | 方向键 |
-| **K** | A 按钮 |
-| **J** | B 按钮 |
-| **R** | Reset（重置游戏）|
-| **Ctrl+C** | 退出 |
-
-## 📁 项目结构
+## 目录结构
 
 ```
 arduboy_pi/
-├── pyarduboy/              # Python 库
-│   ├── core.py             # 核心类
-│   ├── libretro_bridge.py  # LibRetro 桥接
-│   └── drivers/            # 驱动插件
-│       ├── video/          # 视频驱动
-│       │   └── luma_oled.py
-│       ├── audio/          # 音频驱动
-│       │   ├── alsa.py     # ALSA 音频
-│       │   └── null.py
-│       └── input/          # 输入驱动
-│           └── evdev_keyboard.py
-├── core/                   # LibRetro 核心
-│   └── arduous_libretro.so
-├── roms/                   # 游戏文件
-├── run_arduboy.py          # 主程序
-├── test_*.py               # 测试脚本
-└── docs/                   # 文档
-    ├── QUICKSTART.md       # 快速开始
-    ├── AUDIO_SETUP.md      # 音频设置
-    └── ARCHITECTURE.md     # 架构文档
+├── pyarduboy/                    # 核心 Python 库
+│   ├── __init__.py              # 库初始化
+│   ├── core.py                  # PyArduboy 核心类
+│   ├── libretro_bridge.py       # LibRetro 桥接层
+│   └── drivers/                 # 驱动插件系统
+│       ├── video/               # 视频驱动
+│       │   ├── luma_oled.py    # Luma.OLED 驱动（SPI/I2C）
+│       │   └── null.py         # 空驱动（测试用）
+│       ├── audio/               # 音频驱动
+│       │   ├── alsa.py         # ALSA 音频驱动 ⭐ NEW
+│       │   └── null.py         # 空驱动
+│       └── input/               # 输入驱动
+│           ├── evdev_keyboard.py  # Evdev 键盘驱动 ⭐ NEW
+│           └── base.py         # 输入驱动基类
+├── examples/                     # 示例代码
+│   ├── basic_demo.py            # 基础示例
+│   ├── oled_demo.py             # OLED 显示示例
+│   └── custom_driver_demo.py    # 自定义驱动示例
+├── core/                        # 编译好的核心文件目录
+├── roms/                        # 游戏 ROM 目录
+├── docs/                        # 文档
+│   ├── QUICKSTART.md           # 快速开始指南
+│   ├── AUDIO_SETUP.md          # 音频设置指南 ⭐ NEW
+│   └── PROJECT_SUMMARY.md      # 项目总结
+├── run_arduboy.py               # 完整硬件模拟器主程序 ⭐ NEW
+├── test_keyboard.py             # 键盘测试工具 ⭐ NEW
+├── test_evdev_raw.py            # 原始输入测试 ⭐ NEW
+├── list_devices.py              # 设备列表工具 ⭐ NEW
+├── venv/                        # Python 虚拟环境
+└── requirements.txt             # Python 依赖
 ```
 
-## 🔧 配置
+## 模块流程
 
-### 音频配置
+```
+┌─────────────┐
+│   Demo      │  用户应用程序
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│  PyArduboy  │  核心 API（core.py）
+└──────┬──────┘
+       │
+       ├──────────┐
+       │          │
+       ▼          ▼
+┌──────────┐  ┌────────────┐
+│  驱动插件  │  │ LibRetro   │  桥接层（libretro_bridge.py）
+│  (Drivers)│  │  Bridge    │
+└──────────┘  └──────┬─────┘
+                     │
+                     ▼
+              ┌─────────────┐
+              │  arduous_   │  C++ 模拟器核心
+              │  libretro   │
+              └─────────────┘
+```
 
-默认使用 ALSA 音频驱动。如果遇到问题：
+## 游戏执行流程
+
+1. **Demo 加载游戏** → 指定游戏 ROM 文件路径
+2. **PyArduboy 提供驱动** → 设置视频/音频/输入驱动
+3. **LibRetro Bridge 桥接** → 连接 Python 和 C++ 核心
+4. **arduous_libretro 模拟** → 运行 AVR 指令模拟
+
+## 快速安装
+
+### 方式 1：一键安装（推荐）
 
 ```bash
-# 测试音频
-speaker-test -t wav -c 2
+# 克隆项目
+cd /home/pi/workspace
+git clone <your-repo-url> arduboy_pi
+cd arduboy_pi
 
-# 调整音量
-alsamixer
+# 运行一键安装脚本
+chmod +x install.sh
+./install.sh
 
-# 详细配置见文档
-cat docs/AUDIO_SETUP.md
+# 设置 Python 虚拟环境
+chmod +x setup_venv.sh
+./setup_venv.sh
 ```
 
-### 键盘配置
+### 方式 2：手动安装
 
-自动检测带 LED 的主键盘设备。如果需要手动指定：
+#### 1. 系统依赖
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+    build-essential \
+    cmake \
+    python3-dev \
+    python3-pip \
+    python3-venv \
+    python3-evdev \
+    python3-alsaaudio
+```
+
+#### 2. 创建虚拟环境并安装 Python 依赖
+
+```bash
+# 创建虚拟环境
+python3 -m venv venv
+
+# 激活虚拟环境
+source venv/bin/activate
+
+# 安装依赖
+pip install -r requirements.txt
+```
+
+#### 3. 编译 arduous_libretro 核心
+
+```bash
+# 克隆子模块（如果还没有）
+git clone https://github.com/libretro/arduous.git
+
+cd arduous
+mkdir -p build && cd build
+
+# 配置构建（Release 模式，性能优化）
+cmake -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_FLAGS='-O3 -march=native -mtune=native -ffast-math' \
+      -DCMAKE_CXX_FLAGS='-O3 -march=native -mtune=native -ffast-math' \
+      ..
+
+# 编译（使用 4 核加速）
+make -j4
+
+# 复制到 core 目录
+mkdir -p ../../core
+cp arduous_libretro.so ../../core/
+```
+
+#### 4. 配置 SPI（用于 OLED）
+
+```bash
+# 启用 SPI
+sudo raspi-config
+# 选择：Interface Options -> SPI -> Yes
+
+# 重启
+sudo reboot
+
+# 检查 SPI 设备
+ls /dev/spidev*
+```
+
+## 快速开始
+
+### 完整硬件模拟器（推荐）
+
+使用物理 OLED、USB 键盘和音频的完整体验：
+
+```bash
+# 需要 root 权限访问键盘设备
+sudo python3 run_arduboy.py roms/your_game.hex
+```
+
+**硬件连接（SSD1309 SPI OLED）：**
+```
+树莓派引脚        OLED 模块
+Pin 19 (MOSI)   → SDA/MOSI
+Pin 23 (SCLK)   → SCL/SCK
+Pin 24 (CE0)    → CS
+Pin 22 (GPIO25) → DC
+Pin 13 (GPIO27) → RST
+Pin 1  (3.3V)   → VCC
+Pin 6  (GND)    → GND
+```
+
+**控制按键：**
+- W/S/A/D - 方向键
+- K - A 按钮
+- J - B 按钮
+- R - Reset（重置游戏）
+- Ctrl+C - 退出
+
+### 基础示例（无显示输出）
 
 ```python
-# 在 run_arduboy.py 中修改
-input_driver = EvdevKeyboardDriver(device_path="/dev/input/event5")
+from pyarduboy import PyArduboy
+from pyarduboy.drivers.video.null import NullVideoDriver
+
+# 创建实例
+arduboy = PyArduboy(
+    core_path="./core/arduous_libretro.so",
+    game_path="./roms/2048.hex"
+)
+
+# 设置驱动
+arduboy.set_video_driver(NullVideoDriver())
+
+# 运行游戏（600 帧后自动停止）
+arduboy.run(max_frames=600)
 ```
 
-## 📖 文档
+### OLED 显示示例
 
-- [快速开始指南](docs/QUICKSTART.md) - 5 分钟上手教程
-- [音频设置指南](docs/AUDIO_SETUP.md) - ALSA 音频配置
-- [架构文档](docs/ARCHITECTURE.md) - 系统设计说明
-- [项目总结](docs/PROJECT_SUMMARY.md) - 完整技术文档
+```python
+from pyarduboy import PyArduboy
+from pyarduboy.drivers.video.luma_oled import LumaOLED32Driver
+from pyarduboy.drivers.input.keyboard import KeyboardInputDriver
 
-## 🎯 性能
+# 创建实例
+arduboy = PyArduboy(
+    core_path="./core/arduous_libretro.so",
+    game_path="./roms/2048.hex"
+)
 
-| 指标 | 数值 |
-|------|------|
-| **帧率** | 稳定 60 FPS |
-| **音频延迟** | ~93ms (可调) |
-| **内存占用** | ~50MB |
-| **CPU 占用** | ~15% (Pi 4) |
+# 设置 OLED 驱动（128x32 显示屏）
+video_driver = LumaOLED32Driver(
+    device_type='ssd1305',  # 或 'ssd1306'
+    interface='i2c',
+    rotate=2
+)
+arduboy.set_video_driver(video_driver)
 
-## 🐛 常见问题
+# 设置键盘输入
+arduboy.set_input_driver(KeyboardInputDriver())
 
-### 没有权限访问键盘
+# 运行游戏
+arduboy.run()
+```
+
+### 运行预置示例
+
+```bash
+# 激活虚拟环境
+source venv/bin/activate
+
+# 基础示例（无显示）
+cd examples
+python basic_demo.py ../roms/your_game.hex
+
+# OLED 显示示例
+python oled_demo.py ../roms/your_game.hex
+
+# 自定义驱动示例（保存帧为图片）
+python custom_driver_demo.py ../roms/your_game.hex
+
+# 退出虚拟环境
+deactivate
+```
+
+## 控制按键
+
+### 物理键盘（evdev）
+
+主程序 `run_arduboy.py` 使用的按键映射：
+
+- **W / S / A / D** - 方向键（上/下/左/右）
+- **K** - A 按钮
+- **J** - B 按钮
+- **R** - Reset（重新加载游戏）
+- **Ctrl+C** - 退出
+
+### 测试工具
+
+```bash
+# 测试键盘输入
+sudo python3 test_keyboard.py
+
+# 查看原始输入事件
+sudo python3 test_evdev_raw.py
+
+# 列出所有输入设备
+sudo python3 list_devices.py
+```
+
+## 自定义驱动开发
+
+PyArduboy 使用插件式驱动系统，可以轻松创建自定义驱动。
+
+### 创建自定义视频驱动
+
+```python
+import numpy as np
+from pyarduboy import VideoDriver
+
+class MyCustomDriver(VideoDriver):
+    """自定义视频驱动"""
+
+    def init(self, width: int, height: int) -> bool:
+        """初始化驱动"""
+        self._width = width
+        self._height = height
+        self._running = True
+        # 你的初始化代码
+        return True
+
+    def render(self, frame_buffer: np.ndarray) -> None:
+        """渲染一帧"""
+        # frame_buffer 是 (height, width, 3) 的 RGB 数组
+        # 在这里实现你的渲染逻辑
+        pass
+
+    def close(self) -> None:
+        """关闭驱动"""
+        self._running = False
+        # 清理资源
+
+    @property
+    def is_running(self) -> bool:
+        return self._running
+```
+
+### 使用自定义驱动
+
+```python
+from pyarduboy import PyArduboy
+
+arduboy = PyArduboy(
+    core_path="./core/arduous_libretro.so",
+    game_path="./game.hex"
+)
+
+# 使用自定义驱动
+arduboy.set_video_driver(MyCustomDriver())
+arduboy.run()
+```
+
+## API 文档
+
+### PyArduboy 类
+
+主要接口类，用于管理游戏运行。
+
+```python
+PyArduboy(
+    core_path: str,      # libretro 核心路径
+    game_path: str,      # 游戏 ROM 路径
+    target_fps: int = 60 # 目标帧率
+)
+```
+
+**方法：**
+
+- `set_video_driver(driver)` - 设置视频驱动
+- `set_audio_driver(driver)` - 设置音频驱动
+- `set_input_driver(driver)` - 设置输入驱动
+- `run(max_frames=None)` - 运行游戏主循环
+- `stop()` - 停止运行
+- `cleanup()` - 清理资源
+
+**属性：**
+
+- `is_running` - 是否正在运行
+- `frame_count` - 当前帧数
+- `fps` - 实际帧率
+
+### 驱动基类
+
+所有驱动必须继承以下基类：
+
+- `VideoDriver` - 视频驱动基类
+- `AudioDriver` - 音频驱动基类
+- `InputDriver` - 输入驱动基类
+
+## 获取 Arduboy 游戏
+
+- [itch.io - Arduboy 游戏](https://itch.io/games/tag-arduboy)
+- [Arduboy 官方网站](https://www.arduboy.com/)
+- [Arduboy 社区论坛](https://community.arduboy.com/)
+- [ArduboyCollection](https://github.com/eried/ArduboyCollection)
+
+游戏文件格式为 `.hex` 文件。
+
+## 故障排除
+
+### 键盘无法输入
 
 ```bash
 # 需要 root 权限
 sudo python3 run_arduboy.py
+
+# 或添加用户到 input 组
+sudo usermod -a -G input $USER
+# 重新登录后生效
 ```
 
 ### OLED 无显示
@@ -174,8 +406,10 @@ sudo python3 run_arduboy.py
 # 检查 SPI 是否启用
 ls /dev/spidev*
 
-# 检查接线
-# 确认使用正确的 GPIO 引脚
+# 应该看到：/dev/spidev0.0  /dev/spidev0.1
+
+# 检查 luma.oled 安装
+pip3 install luma.oled
 ```
 
 ### 音频没有声音
@@ -184,62 +418,50 @@ ls /dev/spidev*
 # 检查音量
 alsamixer
 
-# 测试音频输出
+# 测试音频
 speaker-test -t wav -c 2
 
-# 查看详细配置
+# 详细配置见文档
 cat docs/AUDIO_SETUP.md
 ```
 
-## 🛠️ 开发
-
-### 测试工具
+### libretro.py 未找到
 
 ```bash
-# 测试键盘输入
-sudo python3 test_keyboard.py
-
-# 测试原始 evdev 事件
-sudo python3 test_evdev_raw.py
-
-# 列出所有输入设备
-sudo python3 list_devices.py
+pip3 install libretro.py
 ```
 
-### 自定义驱动
+### 核心加载失败
 
-PyArduboy 支持插件化驱动：
+检查核心文件是否存在：
 
-```python
-from pyarduboy import PyArduboy
-from pyarduboy.drivers.video.luma_oled import LumaOLEDDriver
-from pyarduboy.drivers.audio.alsa import AlsaAudioDriver
-from pyarduboy.drivers.input.evdev_keyboard import EvdevKeyboardDriver
-
-arduboy = PyArduboy(core_path="...", game_path="...")
-arduboy.set_video_driver(LumaOLEDDriver(...))
-arduboy.set_audio_driver(AlsaAudioDriver(...))
-arduboy.set_input_driver(EvdevKeyboardDriver(...))
-arduboy.run()
+```bash
+ls -lh core/arduous_libretro.so
 ```
 
-## 📜 许可证
+如果不存在，运行 `./build_core.sh` 重新编译。
 
-MIT License
+### 性能问题（帧率低）
 
-## 🙏 致谢
+1. 确保使用 Release 模式编译核心
+2. 音频缓冲区已优化（period_size=4096）
+3. 使用非阻塞音频模式（已默认启用）
+4. 如果仍然卡顿，禁用音频：编辑 `run_arduboy.py` 使用 `NullAudioDriver()`
 
-- [Arduboy](https://arduboy.com/) - 原始硬件和生态
-- [Arduous](https://github.com/rossumur/arduous) - LibRetro 核心
-- [libretro.py](https://github.com/JesseTG/libretro.py) - Python 绑定
-- [Luma.OLED](https://github.com/rm-hull/luma.oled) - OLED 驱动库
+## 许可证
 
-## 📧 联系
+本项目基于开源许可证发布。
 
-- **作者**: PuterJam
-- **Email**: puterjam@gmail.com
-- **项目**: [GitHub](https://github.com/your-username/arduboy_pi)
+- PyArduboy 库：MIT License
+- arduous_libretro 核心：遵循原项目许可证
 
----
+## 贡献
 
-**享受游戏！** 🎮✨
+欢迎贡献代码、报告问题或提出建议！
+
+## 相关链接
+
+- [arduous_libretro](https://github.com/libretro/arduous)
+- [libretro.py](https://github.com/JesseTG/libretro.py)
+- [Luma.OLED](https://github.com/rm-hull/luma.oled)
+- [Arduboy](https://www.arduboy.com/)
