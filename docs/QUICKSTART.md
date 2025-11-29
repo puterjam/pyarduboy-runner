@@ -5,7 +5,9 @@
 ## 前提条件
 
 - ✅ 树莓派（已安装 Raspberry Pi OS）
-- ✅ OLED 显示屏（SSD1305/SSD1306，可选）
+- ✅ OLED 显示屏（SSD1309，SPI 接口）
+- ✅ USB 键盘（用于游戏控制）
+- ✅ 音频输出（HDMI 或 3.5mm 耳机孔，可选）
 - ✅ Arduboy 游戏 (.hex 文件)
 
 ## 一、安装依赖
@@ -13,24 +15,43 @@
 ```bash
 # 1. 系统依赖
 sudo apt-get update
-sudo apt-get install -y build-essential cmake python3-pip i2c-tools
+sudo apt-get install -y build-essential cmake python3-pip
 
-# 2. Python 库
+# 2. 核心 Python 库
+pip3 install -r requirements.txt
+
+# 或者手动安装：
 pip3 install libretro.py pillow numpy
 
-# 3. OLED 支持（如果使用 OLED）
+# 3. OLED 支持（SPI 显示屏）
 pip3 install luma.oled
 
-# 4. 启用 I2C（如果使用 OLED）
+# 4. 键盘输入支持
+sudo apt-get install python3-evdev
+
+# 5. 音频支持（可选）
+sudo apt-get install python3-alsaaudio
+
+# 6. 启用 SPI（用于 OLED）
 sudo raspi-config
-# 选择：Interface Options -> I2C -> Yes
+# 选择：Interface Options -> SPI -> Yes
 sudo reboot
 ```
 
 ## 二、编译核心
 
 ```bash
-cd /home/pi/workspace/arduboy_pi/arduous_rebuild
+cd /home/pi/workspace/arduboy_pi
+
+# 使用提供的编译脚本
+chmod +x build_core.sh
+./build_core.sh
+```
+
+或者手动编译：
+
+```bash
+cd core
 mkdir -p build && cd build
 
 # 配置（Release 模式，性能优化）
@@ -49,9 +70,8 @@ cp arduous_libretro.so ../../
 验证编译结果：
 
 ```bash
-cd /home/pi/workspace/arduboy_pi
-ls -lh arduous_libretro.so
-# 应该看到一个 ~220KB 的文件
+ls -lh core/arduous_libretro.so
+# 应该看到一个 .so 文件
 ```
 
 ## 三、获取游戏
@@ -73,58 +93,78 @@ ls roms/
 cp /path/to/your/game.hex roms/
 ```
 
-## 四、运行示例
+## 四、运行完整模拟器
 
-### 示例 1：基础测试（无显示）
+### 主程序：完整硬件支持
 
-测试核心功能是否正常：
+使用物理 OLED 显示、USB 键盘和音频：
 
 ```bash
-cd examples
-python3 basic_demo.py ../roms/your_game.hex
+# 需要 root 权限访问键盘设备
+sudo python3 run_arduboy.py roms/your_game.hex
 ```
 
-应该看到类似输出：
+**控制按键**（物理 USB 键盘）：
+- **W / S / A / D** - 方向键（上/下/左/右）
+- **K** - A 按钮
+- **J** - B 按钮
+- **R** - Reset（重新加载游戏）
+- **Ctrl+C** - 退出
+
+应该看到输出：
 
 ```
-Creating PyArduboy instance...
-Setting up drivers...
+✓ OLED video driver configured (SPI)
+✓ Audio driver configured (ALSA)
+✓ Input driver configured (evdev keyboard)
+
+Controls (Physical Keyboard):
+  W / S / A / D  - Direction
+  J              - A Button
+  K              - B Button
+  R              - Reset (Reload Game)
+
 Starting Arduboy emulation...
-Game: ../roms/your_game.hex
-Target FPS: 60
-
-Frame 300: FPS=60.1
-Frame 600: FPS=60.0
-
-Demo completed!
+Frame 300: FPS=59.8
 ```
 
-### 示例 2：OLED 显示
+### 硬件连接
 
-如果你有 OLED 显示屏：
-
-```bash
-python3 oled_demo.py ../roms/your_game.hex
+**OLED 显示屏（SSD1309，SPI）：**
+```
+树莓派引脚        OLED 模块
+Pin 19 (MOSI)   → SDA/MOSI
+Pin 23 (SCLK)   → SCL/SCK
+Pin 24 (CE0)    → CS
+Pin 22 (GPIO25) → DC
+Pin 13 (GPIO27) → RST
+Pin 1  (3.3V)   → VCC
+Pin 6  (GND)    → GND
 ```
 
-控制按键：
-- W - 上
-- S - 下
-- A - 左
-- D - 右
-- H - A 按钮
-- J - B 按钮
+**音频输出：**
+- HDMI 音频：自动输出到 HDMI 显示器
+- 3.5mm 耳机孔：插入耳机或音箱
+- 调整音量：`alsamixer`
 
-### 示例 3：保存帧为图片
+### 测试示例（可选）
 
+**示例 1：测试键盘输入**
 ```bash
-python3 custom_driver_demo.py ../roms/your_game.hex
+sudo python3 test_keyboard.py
+# 按键测试，验证键盘映射
 ```
 
-查看输出的图片：
-
+**示例 2：测试原始输入事件**
 ```bash
-ls output_frames/
+sudo python3 test_evdev_raw.py
+# 查看底层 evdev 事件
+```
+
+**示例 3：列出所有输入设备**
+```bash
+sudo python3 list_devices.py
+# 显示所有输入设备详情
 ```
 
 ## 五、编写你的第一个程序

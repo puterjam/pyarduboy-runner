@@ -2,15 +2,16 @@
 
 ## 项目概述
 
-PyArduboy 是一个在树莓派上运行 Arduboy 游戏的 Python 库，支持 OLED 显示屏输出。
+PyArduboy 是一个在树莓派上运行 Arduboy 游戏的完整硬件模拟器，支持物理 OLED 显示屏、USB 键盘输入和音频输出。
 
 ### 设计目标
 
-1. ✅ **易用性** - 提供简洁的 Python API
+1. ✅ **易用性** - 提供简洁的 Python API，开箱即用
 2. ✅ **模块化** - 插件式驱动系统，易于扩展
-3. ✅ **可嵌入** - 可作为库集成到其他项目
-4. ✅ **高性能** - 优化的编译和运行时性能
-5. ✅ **完整文档** - 详细的使用和开发文档
+3. ✅ **完整硬件支持** - OLED 显示、键盘输入、音频输出
+4. ✅ **高性能** - 优化后稳定 60 FPS，低延迟音频
+5. ✅ **可嵌入** - 可作为库集成到其他项目
+6. ✅ **完整文档** - 详细的使用和开发文档
 
 ## 技术架构
 
@@ -24,31 +25,37 @@ pyarduboy/
 ├── drivers/                 # 驱动插件系统
 │   ├── base.py             # 抽象基类定义
 │   ├── video/              # 视频驱动
-│   │   ├── luma_oled.py    # Luma.OLED 驱动实现
+│   │   ├── luma_oled.py    # Luma.OLED 驱动（SPI/I2C）
 │   │   └── null.py         # 空驱动（测试用）
 │   ├── audio/              # 音频驱动
-│   │   └── null.py         # 空驱动
+│   │   ├── alsa.py         # ALSA 音频驱动 ⭐ NEW
+│   │   ├── null.py         # 空驱动
+│   │   └── base.py         # 音频驱动基类
 │   └── input/              # 输入驱动
-│       └── keyboard.py     # 键盘输入驱动
+│       ├── evdev_keyboard.py  # Evdev 键盘驱动 ⭐ NEW
+│       └── base.py         # 输入驱动基类
 └── utils/                   # 工具函数
 ```
 
-### 示例代码
+### 主程序
 
 ```
-examples/
-├── basic_demo.py            # 基础示例（无显示）
-├── oled_demo.py             # OLED 显示示例
-└── custom_driver_demo.py    # 自定义驱动示例
+run_arduboy.py               # 完整硬件模拟器主程序 ⭐
+test_keyboard.py             # 键盘输入测试
+test_evdev_raw.py            # 原始 evdev 事件测试
+list_devices.py              # 列出输入设备
+build_core.sh                # 核心编译脚本
+setup_venv.sh                # 虚拟环境设置脚本
 ```
 
 ### 文档
 
 ```
-├── README_NEW.md            # 完整使用文档
+docs/
+├── README.md                # 项目主文档 ⭐
+├── QUICKSTART.md            # 快速开始指南（已更新）
+├── AUDIO_SETUP.md           # 音频设置指南 ⭐ NEW
 ├── ARCHITECTURE.md          # 架构设计文档
-├── QUICKSTART.md            # 快速开始指南
-├── MIGRATION_GUIDE.md       # 迁移指南（从旧版本）
 ├── PROJECT_SUMMARY.md       # 项目总结（本文件）
 └── CLAUDE.md                # 开发指南
 ```
