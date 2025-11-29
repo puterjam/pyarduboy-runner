@@ -1,0 +1,20 @@
+# PyArduboy 依赖库
+# Python >= 3.7
+
+# 核心依赖（必需）
+libretro.py>=0.1.0      # LibRetro Python 绑定
+numpy>=1.19.0           # 数组处理
+pillow>=8.0.0           # 图像处理
+
+# OLED 支持（可选，用于硬件显示）
+luma.oled>=3.8.0        # OLED 显示屏驱动（SSD1305/SSD1306 等）
+rpi-lgpio>=0.1.0        # GPIO 控制（用于 SPI 接口）
+RPi.GPIO>=0.7.1         # GPIO 控制（用于 SPI 接口）
+
+# 输入设备支持（可选，用于物理键盘）
+evdev>=1.4.0            # 读取 Linux 输入设备事件
+
+# 开发工具（可选）
+# pytest>=6.0.0         # 单元测试
+# black>=21.0           # 代码格式化
+# flake8>=3.9.0         # 代码检查

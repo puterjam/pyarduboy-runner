@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git 子模块（arduous 通过 .gitmodules 管理）
+arduous/
+
+# 编译输出
+core/*.so
+core/*.dll
+core/*.dylib
+
+# 临时文件
+*.log
+*.tmp
+output_frames/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 测试输出
+*.coverage
+htmlcov/

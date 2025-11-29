@@ -1,0 +1,3 @@
+[submodule "arduous"]
+	path = arduous
+	url = https://github.com/libretro/arduous.git
