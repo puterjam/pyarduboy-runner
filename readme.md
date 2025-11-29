@@ -333,6 +333,7 @@ PyArduboy(
 - [itch.io - Arduboy 游戏](https://itch.io/games/tag-arduboy)
 - [Arduboy 官方网站](https://www.arduboy.com/)
 - [Arduboy 社区论坛](https://community.arduboy.com/)
+- [ArduboyCollection](https://github.com/eried/ArduboyCollection)
 
 游戏文件格式为 `.hex` 文件。
 
@@ -383,3 +384,4 @@ ls -lh arduous_libretro.so
 - [libretro.py](https://github.com/JesseTG/libretro.py)
 - [Luma.OLED](https://github.com/rm-hull/luma.oled)
 - [Arduboy](https://www.arduboy.com/)
+
