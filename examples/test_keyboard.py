@@ -12,7 +12,7 @@ import os
 # 添加当前目录到 Python 路径
 sys.path.insert(0, os.path.dirname(__file__))
 
-from pyarduboy.drivers.input.evdev_keyboard import EvdevKeyboardDriver
+from pyarduboy.drivers.input.evdev import EvdevKeyboardDriver
 
 
 def main():

@@ -4,7 +4,7 @@
 from .base import InputDriver
 
 try:
-    from .evdev_keyboard import EvdevKeyboardDriver, EvdevKeyboardDriverCustom
+    from .evdev import EvdevKeyboardDriver, EvdevKeyboardDriverCustom
     __all__ = [
         "InputDriver",
         "EvdevKeyboardDriver",

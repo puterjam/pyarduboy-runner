@@ -111,13 +111,15 @@ class LibretroBridge:
             self.builder.with_content(self.game_path)
             self.builder.with_content_driver(DEFAULT)
 
-            # 启用性能优化
+            # 启用性能优化（在某些 Python 版本可能失败，忽略错误继续）
             try:
                 self.builder.with_jit_capable(True)
                 self.builder.with_perf(DEFAULT)
                 self.builder.with_timing(DEFAULT)
-            except Exception:
-                pass  # 某些优化可能不可用
+            except Exception as e:
+                # 某些优化在新版本 Python 中可能不可用，但不影响核心功能
+                print(f"Warning: Could not enable all optimizations: {e}")
+                pass
 
             # 设置视频驱动
             self.video_driver = ArrayVideoDriver()

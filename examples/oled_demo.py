@@ -12,9 +12,9 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from pyarduboy import PyArduboy
-from pyarduboy.drivers.video.luma_oled import LumaOLEDDriver, LumaOLED32Driver
+from pyarduboy.drivers.video.luma import LumaOLEDDriver, LumaOLED32Driver
 from pyarduboy.drivers.audio.null import NullAudioDriver
-from pyarduboy.drivers.input.evdev_keyboard import EvdevKeyboardDriver
+from pyarduboy.drivers.input.evdev import EvdevKeyboardDriver
 
 
 def main():

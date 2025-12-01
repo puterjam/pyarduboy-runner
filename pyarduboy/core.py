@@ -20,9 +20,13 @@ class PyArduboy:
         >>> from pyarduboy import PyArduboy
         >>> from pyarduboy.drivers.video.luma_oled import LumaOLEDDriver
         >>>
+        >>> # 自动判断核心路径(推荐)
+        >>> arduboy = PyArduboy(game_path="./game.hex")
+        >>>
+        >>> # 或手动指定核心路径
         >>> arduboy = PyArduboy(
-        ...     core_path="./arduous_libretro.so",
-        ...     game_path="./game.hex"
+        ...     game_path="./game.hex",
+        ...     core_path="./arduous_libretro.so"
         ... )
         >>> arduboy.set_video_driver(LumaOLEDDriver())
         >>> arduboy.run()
@@ -35,18 +39,31 @@ class PyArduboy:
 
     def __init__(
         self,
-        core_path: str,
         game_path: str,
+        core_path: Optional[str] = None,
         target_fps: int = TARGET_FPS
     ):
         """
         初始化 PyArduboy
 
         Args:
-            core_path: libretro 核心文件路径
             game_path: 游戏 ROM 文件路径
+            core_path: libretro 核心文件路径(可选，默认根据系统自动判断)
+                      macOS: ./core/arduous_libretro.dylib
+                      Linux: ./core/arduous_libretro.so
             target_fps: 目标帧率，默认 60 FPS
         """
+        # 自动判断 core_path
+        if core_path is None:
+            import platform
+            system = platform.system()
+            if system == "Darwin":  # macOS
+                core_path = "./core/arduous_libretro.dylib"
+            elif system == "Linux":
+                core_path = "./core/arduous_libretro.so"
+            else:
+                raise ValueError(f"Unsupported platform: {system}. Please specify core_path manually.")
+
         self.core_path = core_path
         self.game_path = game_path
         self.target_fps = target_fps

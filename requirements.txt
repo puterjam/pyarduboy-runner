@@ -1,21 +1,25 @@
 # PyArduboy 依赖库
-# Python >= 3.7
+# IMPORTANT: Requires Python 3.10 ~ 3.12
+# Python 3.13+ is NOT supported due to libretro.py compatibility issues
+# Recommended: Python 3.12
 
 # 核心依赖（必需）
 libretro.py>=0.1.0      # LibRetro Python 绑定
 numpy>=1.19.0           # 数组处理
 pillow>=8.0.0           # 图像处理
 
-# OLED 支持（可选，用于硬件显示）
+# 显示驱动（可选）
 luma.oled>=3.8.0        # OLED 显示屏驱动（SSD1305/SSD1306 等）
-rpi-lgpio>=0.1.0        # GPIO 控制（用于 SPI 接口）
-RPi.GPIO>=0.7.1         # GPIO 控制（用于 SPI 接口）
+pygame>=2.0.0           # Pygame 桌面窗口显示（macOS/Windows/Linux）
 
-# 输入设备支持（可选，用于物理键盘）
-evdev>=1.4.0            # 读取 Linux 输入设备事件
+# 音频驱动（可选）
+pyaudio>=0.2.11         # PyAudio 跨平台音频库（macOS/Windows/Linux）
 
-# 音频支持（可选，用于声音输出）
-pyalsaaudio>=0.9.0      # ALSA 音频驱动（Linux 音频系统）
+# Linux 专用依赖（仅在 Linux 系统安装）
+rpi-lgpio>=0.1.0; sys_platform == 'linux'        # GPIO 控制（用于 SPI 接口）
+RPi.GPIO>=0.7.1; sys_platform == 'linux'         # GPIO 控制（用于 SPI 接口）
+evdev>=1.4.0; sys_platform == 'linux'            # 读取 Linux 输入设备事件
+pyalsaaudio>=0.9.0; sys_platform == 'linux'      # ALSA 音频驱动（Linux 音频系统）
 
 # 开发工具（可选）
 # pytest>=6.0.0         # 单元测试
