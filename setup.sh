@@ -31,7 +31,7 @@ print_error() {
 }
 
 # 步骤 1: 检测操作系统
-echo ">>> 步骤 1/5: 检测操作系统"
+echo ">>> 步骤 1/6: 检测操作系统"
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     OS="linux"
     print_success "检测到 Linux 系统"
@@ -44,8 +44,34 @@ else
 fi
 echo ""
 
-# 步骤 2: 检查 Python 版本
-echo ">>> 步骤 2/5: 检查 Python 环境"
+# 步骤 2: 安装系统依赖
+echo ">>> 步骤 2/6: 安装系统依赖"
+if [ "$OS" == "linux" ]; then
+    echo "更新软件包列表..."
+    sudo apt-get update > /dev/null 2>&1
+    print_success "软件包列表已更新"
+
+    echo "安装系统依赖 (git, cmake, build tools, SDL2, PortAudio)..."
+    sudo apt-get install -y git cmake build-essential libsdl2-dev portaudio19-dev > /dev/null 2>&1
+    print_success "系统依赖安装完成"
+elif [ "$OS" == "mac" ]; then
+    # 检查 Homebrew
+    if ! command -v brew &> /dev/null; then
+        print_warning "未找到 Homebrew，正在安装..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        print_success "Homebrew 安装完成"
+    else
+        print_success "Homebrew 已安装"
+    fi
+
+    echo "安装系统依赖 (git, cmake, SDL2, PortAudio)..."
+    brew install git cmake sdl2 portaudio > /dev/null 2>&1
+    print_success "系统依赖安装完成"
+fi
+echo ""
+
+# 步骤 3: 检查 Python 版本
+echo ">>> 步骤 3/6: 检查 Python 环境"
 if ! command -v python3 &> /dev/null; then
     print_error "未找到 Python 3"
     echo "请先安装 Python 3.10-3.12:"
@@ -74,8 +100,8 @@ fi
 print_success "Python 版本检查通过"
 echo ""
 
-# 步骤 3: 创建并激活虚拟环境
-echo ">>> 步骤 3/5: 设置 Python 虚拟环境"
+# 步骤 4: 创建并激活虚拟环境
+echo ">>> 步骤 4/6: 设置 Python 虚拟环境"
 if [ ! -d "venv" ]; then
     echo "创建虚拟环境..."
     python3 -m venv venv
@@ -102,8 +128,8 @@ else
 fi
 echo ""
 
-# 步骤 4: 选择并下载 libretro 核心
-echo ">>> 步骤 4/5: 下载 LibRetro 核心"
+# 步骤 5: 选择并下载 libretro 核心
+echo ">>> 步骤 5/6: 下载 LibRetro 核心"
 echo ""
 echo "可用的 Arduboy 模拟器核心:"
 echo "  1) ardens   - ardens 模拟器 (推荐)"
@@ -173,8 +199,8 @@ if [ ! -z "$CORE_NAME" ]; then
 fi
 echo ""
 
-# 步骤 5: 验证安装
-echo ">>> 步骤 5/5: 验证安装"
+# 步骤 6: 验证安装
+echo ">>> 步骤 6/6: 验证安装"
 
 # 检查是否有核心文件
 if [ "$OS" == "mac" ]; then

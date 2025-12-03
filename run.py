@@ -125,7 +125,7 @@ def setup_pygame_input(arduboy):
 def setup_alsa_audio(arduboy):
     """设置 ALSA 音频驱动"""
     try:
-        audio_driver = AlsaAudioDriver(period_size=4096)
+        audio_driver = AlsaAudioDriver(volume=1)
         arduboy.set_audio_driver(audio_driver)
         print("✓ Audio driver configured (ALSA)")
         return True
@@ -226,12 +226,7 @@ Examples:
         # 桌面环境，使用 PyAudio（非阻塞 callback 模式，不影响 FPS）
         # 使用 Ardens 标准配置：50kHz, 单声道
         try:
-            audio_driver = PygameMixerDriver(
-                sample_rate=50000,  # Ardens 标准: 16MHz / 320
-                channels=1,         # 单声道（Arduboy 硬件）
-                buffer_size=2048,   # 降低延迟
-                volume=1          # 适中音量
-            )
+            audio_driver = PygameMixerDriver(volume=1)
             arduboy.set_audio_driver(audio_driver)
             print("✓ Audio driver configured (PyAudio - 50kHz)")
         except ImportError:
