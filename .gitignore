@@ -24,6 +24,7 @@ ENV/
 
 # Git 子模块（arduous 通过 .gitmodules 管理）
 arduous/
+Ardens/
 
 # 编译输出
 core/*.so
@@ -44,3 +45,5 @@ Thumbs.db
 htmlcov/
 
 roms/*
+
+test_*

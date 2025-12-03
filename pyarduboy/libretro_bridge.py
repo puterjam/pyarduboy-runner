@@ -190,28 +190,65 @@ class LibretroBridge:
             return None
 
         try:
+            # 重要：创建帧数据的完整副本，避免引用导致的拖影
             frame_data = bytes(self.video_driver._frame)
             width = self.video_driver._last_width
             height = self.video_driver._last_height
             pitch = self.video_driver._last_pitch
+            pixel_format = getattr(self.video_driver, '_pixel_format', None)
 
             # 提取实际帧数据
             actual_size = height * pitch
             frame_bytes = frame_data[:actual_size]
 
-            # Arduboy 使用 RGB565 格式
-            img_array = np.frombuffer(frame_bytes, dtype=np.uint16).reshape((height, width))
+            # 根据 pitch 判断像素格式
+            bytes_per_pixel = pitch // width if width > 0 else 0
 
-            # 转换 RGB565 到 RGB888
-            r = ((img_array & 0xF800) >> 11) << 3
-            g = ((img_array & 0x07E0) >> 5) << 2
-            b = (img_array & 0x001F) << 3
+            # 根据像素格式处理
+            if bytes_per_pixel == 2:
+                # RGB565 格式 (每像素 2 字节)
+                img_array = np.frombuffer(frame_bytes, dtype=np.uint16).reshape((height, width))
 
-            rgb_array = np.stack([r, g, b], axis=2).astype(np.uint8)
-            return rgb_array
+                # 转换 RGB565 到 RGB888
+                r = ((img_array & 0xF800) >> 11) << 3
+                g = ((img_array & 0x07E0) >> 5) << 2
+                b = (img_array & 0x001F) << 3
+
+                rgb_array = np.stack([r, g, b], axis=2).astype(np.uint8)
+                # 返回副本，避免共享内存
+                return rgb_array.copy()
+
+            elif bytes_per_pixel == 1:
+                # 8位索引色或灰度 (每像素 1 字节)
+                img_array = np.frombuffer(frame_bytes, dtype=np.uint8).reshape((height, width))
+
+                # 转换为 RGB (假设是灰度或单色)
+                rgb_array = np.stack([img_array, img_array, img_array], axis=2)
+                # 返回副本
+                return rgb_array.copy()
+
+            elif bytes_per_pixel == 4:
+                # XRGB8888 或 ARGB8888 格式 (每像素 4 字节)
+                # 使用 pitch 来正确 reshape (因为可能有 padding)
+                img_array = np.frombuffer(frame_bytes, dtype=np.uint8).reshape((height, pitch))
+
+                # 提取实际像素数据 (每行前 width*4 字节)
+                img_array = img_array[:, :width*4].reshape((height, width, 4))
+
+                # libretro pixel_format=1 通常是 XRGB8888 (小端序: B G R X)
+                # 需要反转通道顺序: BGRX -> RGB
+                rgb_array = img_array[:, :, [2, 1, 0]].copy()  # 提取并反转 BGR -> RGB，返回副本
+                return rgb_array
+
+            else:
+                print(f"Unknown pixel format: bytes_per_pixel={bytes_per_pixel}, pitch={pitch}, width={width}")
+                print(f"Data size: {len(frame_bytes)} bytes, height={height}")
+                return None
 
         except Exception as e:
             print(f"Error getting frame: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def get_audio_samples(self) -> Optional[np.ndarray]:
@@ -322,4 +359,5 @@ class LibretroBridge:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """上下文管理器出口"""
+        _ = exc_type, exc_val, exc_tb  # 未使用，但需要符合上下文管理器协议
         self.cleanup()

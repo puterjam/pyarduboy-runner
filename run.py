@@ -30,6 +30,7 @@ from pyarduboy.drivers.video.pygame import PygameDriver
 from pyarduboy.drivers.audio.alsa import AlsaAudioDriver
 from pyarduboy.drivers.audio.null import NullAudioDriver
 from pyarduboy.drivers.audio.pyaudio import PyAudioDriver
+from pyarduboy.drivers.audio.pygame_mixer import PygameMixerDriver
 
 from pyarduboy.drivers.input.evdev import EvdevKeyboardDriver
 
@@ -187,11 +188,17 @@ Examples:
     try:
         arduboy = PyArduboy(
             game_path=GAME_PATH,
+            # core_name="arduous",  # 使用 arduous 核心
             target_fps=60
         )
         print(f"Core: {arduboy.core_path} (auto-detected)\n")
     except ValueError as e:
         print(f"Error: {e}")
+        return 1
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        print("\nPlease download the ardens core:")
+        print("  python download_core.py ardens")
         return 1
 
     # 检查核心文件是否存在
@@ -216,17 +223,25 @@ Examples:
         # Linux 环境，尝试使用 ALSA
         setup_alsa_audio(arduboy)
     else:
-        # 桌面环境，尝试使用 PyAudio
+        # 桌面环境，使用 PyAudio（非阻塞 callback 模式，不影响 FPS）
+        # 使用 Ardens 标准配置：50kHz, 单声道
         try:
-            audio_driver = PyAudioDriver(volume=1.0)
+            audio_driver = PygameMixerDriver(
+                sample_rate=50000,  # Ardens 标准: 16MHz / 320
+                channels=1,         # 单声道（Arduboy 硬件）
+                buffer_size=2048,   # 降低延迟
+                volume=1          # 适中音量
+            )
             arduboy.set_audio_driver(audio_driver)
-            print("✓ Audio driver configured (PyAudio)")
+            print("✓ Audio driver configured (PyAudio - 50kHz)")
         except ImportError:
             print("PyAudio not available, using null audio driver")
             arduboy.set_audio_driver(NullAudioDriver())
             print("✓ Audio driver configured (null - no sound)")
         except Exception as e:
             print(f"Failed to initialize PyAudio: {e}")
+            import traceback
+            traceback.print_exc()
             arduboy.set_audio_driver(NullAudioDriver())
             print("✓ Audio driver configured (null - no sound)")
 

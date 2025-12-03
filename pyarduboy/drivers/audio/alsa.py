@@ -32,7 +32,7 @@ class AlsaAudioDriver(AudioDriver):
         device: str = 'default',
         sample_rate: int = 44100,
         channels: int = 2,
-        period_size: int = 1024
+        period_size: int = 4096
     ):
         """
         初始化 ALSA 音频驱动

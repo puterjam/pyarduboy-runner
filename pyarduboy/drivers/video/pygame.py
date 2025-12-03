@@ -148,7 +148,13 @@ class PygameDriver(VideoDriver):
         渲染一帧到 pygame 窗口
 
         Args:
-            frame_buffer: 帧缓冲区，shape 为 (height, width, 3)，RGB 格式
+            frame_buffer: 帧缓冲区，shape 为 (height, width)，单通道灰度格式
+                         Arduboy 是 1-bit 显示，值为 0-255 的灰度
+
+        注意：
+            - Arduboy 是 1-bit 单色显示（128x64）
+            - libretro 输出灰度值 0-255
+            - 使用阈值 128 转换为黑白
         """
         if not self._running or self.screen is None:
             return
@@ -164,30 +170,40 @@ class PygameDriver(VideoDriver):
                         self._running = False
                         return
 
-            # 将 RGB 帧转换为单色显示
-            # 取 RGB 的平均值作为灰度
-            gray = np.mean(frame_buffer, axis=2).astype(np.uint8)
+            # 处理不同格式的输入
+            if frame_buffer.ndim == 3:
+                # RGB 格式：取任意通道（对于黑白图像，三个通道值相同）
+                # 或者取平均值以防万一
+                gray = frame_buffer[:, :, 0]  # 取红色通道即可
+            elif frame_buffer.ndim == 2:
+                # 灰度格式：直接使用
+                gray = frame_buffer
+            else:
+                raise ValueError(f"Unsupported frame buffer shape: {frame_buffer.shape}")
 
-            # 转换为单色（阈值 128）
+            # 转换为 1-bit 单色（阈值 128）
+            # Arduboy 是纯黑白显示，没有灰度
             mono = gray > 128
 
-            # 创建彩色图像
-            colored = np.zeros_like(frame_buffer)
+            # 创建彩色图像（3 通道 RGB）
+            colored = np.zeros((frame_buffer.shape[0], frame_buffer.shape[1], 3), dtype=np.uint8)
             bg = np.array(self.theme['background'], dtype=np.uint8)
             fg = np.array(self.theme['foreground'], dtype=np.uint8)
 
-            # 应用颜色主题
-            colored[~mono] = bg  # 背景色
-            colored[mono] = fg   # 前景色
+            # 应用颜色主题（向量化操作，提高性能）
+            colored[~mono] = bg  # 背景色（像素关闭）
+            colored[mono] = fg   # 前景色（像素点亮）
+
+            # 转置并创建副本（pygame 需要 (width, height, 3) 格式）
+            colored_transposed = np.transpose(colored, (1, 0, 2)).copy()
 
             # 创建 pygame surface
-            surface = self.pygame.surfarray.make_surface(
-                np.transpose(colored, (1, 0, 2))
-            )
+            surface = self.pygame.surfarray.make_surface(colored_transposed)
 
-            # 缩放到窗口大小
+            # 缩放到窗口大小（使用最近邻插值保持像素清晰度）
             if self.scale != 1:
                 window_size = (self._width * self.scale, self._height * self.scale)
+                # 整数倍缩放使用 scale（速度快且清晰）
                 surface = self.pygame.transform.scale(surface, window_size)
 
             # 绘制到屏幕
@@ -204,8 +220,8 @@ class PygameDriver(VideoDriver):
                 fps = self.clock.get_fps()
                 self.pygame.display.set_caption(f"{self.caption} - FPS: {fps:.1f}")
 
-            # 时钟 tick（不限制帧率，由主循环控制）
-            self.clock.tick()
+            # 时钟 tick（60 FPS 目标，匹配 Ardens）
+            self.clock.tick(60)
 
         except Exception as e:
             # 只在第一次错误时打印，避免刷屏

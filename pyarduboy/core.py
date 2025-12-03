@@ -4,6 +4,8 @@ PyArduboy 核心类
 提供高级 API 来运行 Arduboy 游戏，管理驱动插件
 """
 import time
+import platform
+from pathlib import Path
 from typing import Optional
 from .libretro_bridge import LibretroBridge
 from .drivers.base import VideoDriver, AudioDriver, InputDriver
@@ -37,10 +39,91 @@ class PyArduboy:
     SCREEN_HEIGHT = 64
     TARGET_FPS = 60
 
+    # 支持的核心列表 (优先级顺序)
+    SUPPORTED_CORES = ["ardens", "arduous"]
+
+    @staticmethod
+    def _get_lib_extension() -> str:
+        """获取当前平台的库文件扩展名"""
+        system = platform.system()
+        if system == "Darwin":
+            return "dylib"
+        elif system == "Linux":
+            return "so"
+        elif system == "Windows":
+            return "dll"
+        else:
+            raise ValueError(f"Unsupported platform: {system}")
+
+    @classmethod
+    def _find_core(cls, core_name: Optional[str] = None) -> str:
+        """
+        自动查找 libretro 核心文件
+
+        查找顺序:
+        1. 如果指定了 core_name，查找该核心
+        2. 否则按优先级查找: arduous > ardens
+        3. 查找目录: ./core/, ../core/, 当前目录
+
+        Args:
+            core_name: 核心名称 (arduous/ardens)，None 表示自动选择
+
+        Returns:
+            核心文件路径
+
+        Raises:
+            FileNotFoundError: 未找到任何核心
+        """
+        lib_ext = cls._get_lib_extension()
+
+        # 搜索目录列表
+        search_dirs = [
+            Path.cwd() / "core",                    # ./core/
+            Path(__file__).parent.parent / "core",  # pyarduboy 包的上级目录 /core
+            Path.cwd(),                             # 当前目录
+        ]
+
+        # 确定要查找的核心列表
+        if core_name:
+            if core_name not in cls.SUPPORTED_CORES:
+                raise ValueError(
+                    f"Unknown core: {core_name}. "
+                    f"Supported cores: {', '.join(cls.SUPPORTED_CORES)}"
+                )
+            cores_to_search = [core_name]
+        else:
+            cores_to_search = cls.SUPPORTED_CORES
+
+        # 按优先级搜索
+        for core in cores_to_search:
+            core_filename = f"{core}_libretro.{lib_ext}"
+
+            for search_dir in search_dirs:
+                core_path = search_dir / core_filename
+
+                if core_path.exists():
+                    print(f"Using LibRetro core: {core} ({core_path})")
+                    return str(core_path)
+
+        # 未找到任何核心
+        searched_paths = []
+        for core in cores_to_search:
+            core_filename = f"{core}_libretro.{lib_ext}"
+            for search_dir in search_dirs:
+                searched_paths.append(str(search_dir / core_filename))
+
+        raise FileNotFoundError(
+            f"No libretro core found. Searched paths:\n" +
+            "\n".join(f"  - {p}" for p in searched_paths) +
+            f"\n\nPlease download a core using:\n" +
+            f"  python download_core.py {cores_to_search[0]}"
+        )
+
     def __init__(
         self,
         game_path: str,
         core_path: Optional[str] = None,
+        core_name: Optional[str] = None,
         target_fps: int = TARGET_FPS
     ):
         """
@@ -49,20 +132,13 @@ class PyArduboy:
         Args:
             game_path: 游戏 ROM 文件路径
             core_path: libretro 核心文件路径(可选，默认根据系统自动判断)
-                      macOS: ./core/arduous_libretro.dylib
-                      Linux: ./core/arduous_libretro.so
+            core_name: 核心名称 (arduous/ardens)，用于自动查找
+                      如果同时指定 core_path 和 core_name，core_path 优先
             target_fps: 目标帧率，默认 60 FPS
         """
-        # 自动判断 core_path
+        # 自动查找 core_path
         if core_path is None:
-            import platform
-            system = platform.system()
-            if system == "Darwin":  # macOS
-                core_path = "./core/arduous_libretro.dylib"
-            elif system == "Linux":
-                core_path = "./core/arduous_libretro.so"
-            else:
-                raise ValueError(f"Unsupported platform: {system}. Please specify core_path manually.")
+            core_path = self._find_core(core_name)
 
         self.core_path = core_path
         self.game_path = game_path
@@ -146,7 +222,7 @@ class PyArduboy:
         运行游戏主循环
 
         Args:
-            max_frames: 最大运行帧数，None 表示无限运行
+            max_frames: 最大运行帧数,None 表示无限运行
         """
         if not self.initialize():
             print("Initialization failed")
@@ -160,7 +236,11 @@ class PyArduboy:
         self._frame_count = 0
         self._start_time = time.time()
 
+        # 提取核心名称
+        core_name = Path(self.core_path).stem.replace("_libretro", "")
+
         print(f"Starting Arduboy emulation...")
+        print(f"Core: {core_name}")
         print(f"Game: {self.game_path}")
         print(f"Target FPS: {self.target_fps}")
         if self.video_driver:
@@ -312,4 +392,5 @@ class PyArduboy:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """上下文管理器出口"""
+        _ = exc_type, exc_val, exc_tb  # 未使用，但需要符合上下文管理器协议
         self.cleanup()
