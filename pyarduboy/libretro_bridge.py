@@ -26,13 +26,15 @@ class LibretroBridge:
     负责管理 libretro session 的生命周期，提供简化的接口给上层调用
     """
 
-    def __init__(self, core_path: str, game_path: str):
+    def __init__(self, core_path: str, game_path: str, retro_path: Optional[str] = None):
         """
         初始化 LibRetro 桥接层
 
         Args:
             core_path: libretro 核心文件路径（.so 文件）
             game_path: 游戏 ROM 文件路径（.hex 文件）
+            retro_path: 模拟器工作目录（可选，默认为当前工作目录）
+                       存档将保存到 {retro_path}/saves/{游戏名}/ 目录下
         """
         if not os.path.exists(core_path):
             raise FileNotFoundError(f"Core file not found: {core_path}")
@@ -42,6 +44,22 @@ class LibretroBridge:
 
         self.core_path = core_path
         self.game_path = game_path
+
+        # 模拟器工作目录设置
+        from pathlib import Path
+        if retro_path:
+            self.retro_path = Path(retro_path)
+        else:
+            # 默认使用当前工作目录
+            self.retro_path = Path.cwd()
+
+        # 确保工作目录存在
+        self.retro_path.mkdir(parents=True, exist_ok=True)
+
+        # 存档目录结构: {retro_path}/saves/{游戏名}/
+        game_name = Path(game_path).stem
+        self.save_dir = self.retro_path / 'saves' / game_name
+        self.save_dir.mkdir(parents=True, exist_ok=True)
 
         # LibRetro 组件
         self.builder = None
@@ -73,6 +91,9 @@ class LibretroBridge:
         # 会话状态
         self._initialized = False
         self._running = False
+
+        # 快速存档缓冲区（内存）
+        self._quick_save_buffer: Optional[bytearray] = None
 
     def set_input_state(self, button_states: dict) -> None:
         """
@@ -132,6 +153,33 @@ class LibretroBridge:
             # 设置输入驱动
             self.input_driver = IterableInputDriver(lambda: self._input_generator())
             self.builder.with_input(self.input_driver)
+
+            # 设置存档目录（重要：libretro 核心需要这个）
+            try:
+                from libretro.drivers.path import ExplicitPathDriver
+                # 创建 ExplicitPathDriver 并设置存档目录
+                # 注意：ExplicitPathDriver 有 bug，会对所有参数调用 makedirs，
+                # 所以必须为所有路径提供有效值，不能使用 None
+                # 为不需要的路径在工作目录下创建子目录
+                system_dir = self.retro_path / 'system'
+                assets_dir = self.retro_path / 'assets'
+                saves_parent_dir = self.retro_path / 'saves'  # saves 父目录
+                playlist_dir = self.retro_path / 'playlists'
+
+                path_driver = ExplicitPathDriver(
+                    corepath=self.core_path,         # libretro 核心路径
+                    system=str(system_dir),           # 系统目录（BIOS等）
+                    assets=str(assets_dir),           # 核心资源目录
+                    save=str(saves_parent_dir),       # 存档父目录: {retro_path}/saves/
+                    playlist=str(playlist_dir)        # 播放列表目录
+                )
+                self.builder.with_paths(path_driver)  # 注意：方法名是 with_paths (复数)
+                print(f"✓ Retro working directory: {self.retro_path}")
+                print(f"✓ Save directory: {self.save_dir}")
+            except Exception as e:
+                print(f"Warning: Could not configure save directory: {e}")
+                import traceback
+                traceback.print_exc()
 
             # 构建会话
             self.session = self.builder.build()
@@ -361,3 +409,222 @@ class LibretroBridge:
         """上下文管理器出口"""
         _ = exc_type, exc_val, exc_tb  # 未使用，但需要符合上下文管理器协议
         self.cleanup()
+
+    # ==================== 存档功能 ====================
+
+    def get_savestate_size(self) -> int:
+        """
+        获取存档所需的缓冲区大小
+
+        Returns:
+            存档大小（字节），如果不支持存档则返回 0
+        """
+        if not self._running or not self.session:
+            return 0
+
+        try:
+            return self.session.core.serialize_size()
+        except Exception as e:
+            print(f"Error getting savestate size: {e}")
+            return 0
+
+    def save_state(self, slot: int = 0) -> bool:
+        """
+        保存游戏状态到指定槽位
+
+        存档文件保存在 {retro_path}/saves/{游戏名}/slot{槽位号}.sav
+
+        Args:
+            slot: 存档槽位（0-99），默认为 0
+
+        Returns:
+            保存成功返回 True，失败返回 False
+        """
+        if not self._running or not self.session:
+            print("Session not running, cannot save state")
+            return False
+
+        try:
+            # 获取存档大小
+            size = self.session.core.serialize_size()
+            if size == 0:
+                print("Core does not support save states")
+                return False
+
+            # 分配缓冲区
+            buffer = bytearray(size)
+
+            # 序列化游戏状态
+            success = self.session.core.serialize(buffer)
+            if not success:
+                print("Failed to serialize game state")
+                return False
+
+            # 生成存档文件路径：self.save_dir 已经是 {retro_path}/saves/{游戏名}/
+            save_file = self.save_dir / f"slot{slot}.sav"
+
+            # 保存到文件
+            with open(save_file, 'wb') as f:
+                f.write(buffer)
+
+            print(f"Game state saved to: {save_file}")
+            print(f"  Size: {len(buffer)} bytes")
+            return True
+
+        except Exception as e:
+            print(f"Error saving state: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def load_state(self, slot: int = 0) -> bool:
+        """
+        从指定槽位加载游戏状态
+
+        存档文件从 {retro_path}/saves/{游戏名}/slot{槽位号}.sav 读取
+
+        Args:
+            slot: 存档槽位（0-99），默认为 0
+
+        Returns:
+            加载成功返回 True，失败返回 False
+        """
+        if not self._running or not self.session:
+            print("Session not running, cannot load state")
+            return False
+
+        try:
+            # 生成存档文件路径：self.save_dir 已经是 {retro_path}/saves/{游戏名}/
+            save_file = self.save_dir / f"slot{slot}.sav"
+
+            # 检查存档文件是否存在
+            if not save_file.exists():
+                print(f"Save file not found: {save_file}")
+                return False
+
+            # 读取存档数据
+            with open(save_file, 'rb') as f:
+                data = f.read()
+
+            # 反序列化游戏状态
+            success = self.session.core.unserialize(data)
+            if not success:
+                print("Failed to unserialize game state")
+                return False
+
+            print(f"Game state loaded from: {save_file}")
+            print(f"  Size: {len(data)} bytes")
+            return True
+
+        except Exception as e:
+            print(f"Error loading state: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def quick_save(self) -> bool:
+        """
+        快速保存到内存（用于即时回放/倒带）
+
+        Returns:
+            保存成功返回 True，失败返回 False
+        """
+        if not self._running or not self.session:
+            return False
+
+        try:
+            size = self.session.core.serialize_size()
+            if size == 0:
+                return False
+
+            self._quick_save_buffer = bytearray(size)
+            success = self.session.core.serialize(self._quick_save_buffer)
+
+            if success:
+                print(f"Quick save: {len(self._quick_save_buffer)} bytes")
+            return success
+
+        except Exception as e:
+            print(f"Error in quick save: {e}")
+            return False
+
+    def quick_load(self) -> bool:
+        """
+        快速加载（从内存）
+
+        Returns:
+            加载成功返回 True，失败返回 False
+        """
+        if not self._running or not self.session:
+            return False
+
+        if self._quick_save_buffer is None:
+            print("No quick save available")
+            return False
+
+        try:
+            success = self.session.core.unserialize(self._quick_save_buffer)
+            if success:
+                print("Quick load successful")
+            return success
+
+        except Exception as e:
+            print(f"Error in quick load: {e}")
+            return False
+
+    def has_quick_save(self) -> bool:
+        """
+        检查是否有快速存档
+
+        Returns:
+            有快速存档返回 True，否则返回 False
+        """
+        return self._quick_save_buffer is not None
+
+    def list_save_states(self) -> list[int]:
+        """
+        列出所有可用的存档槽位
+
+        Returns:
+            可用槽位列表，例如 [0, 1, 3] 表示槽位 0、1、3 有存档
+        """
+        if not self.save_dir.exists():
+            return []
+
+        slots = []
+        for save_file in self.save_dir.glob("slot*.sav"):
+            # 从文件名提取槽位号
+            # 例如: "slot2.sav" -> 2
+            try:
+                slot_str = save_file.stem.replace('slot', '')
+                slot = int(slot_str)
+                slots.append(slot)
+            except ValueError:
+                continue
+
+        return sorted(slots)
+
+    def delete_save_state(self, slot: int = 0) -> bool:
+        """
+        删除指定槽位的存档
+
+        Args:
+            slot: 存档槽位（0-99）
+
+        Returns:
+            删除成功返回 True，失败返回 False
+        """
+        try:
+            save_file = self.save_dir / f"slot{slot}.sav"
+
+            if not save_file.exists():
+                print(f"Save file not found: {save_file}")
+                return False
+
+            save_file.unlink()
+            print(f"Deleted save state: {save_file}")
+            return True
+
+        except Exception as e:
+            print(f"Error deleting save state: {e}")
+            return False

@@ -47,3 +47,8 @@ htmlcov/
 roms/*
 
 test_*
+
+# 存档目录
+saves/
+save/
+retro/

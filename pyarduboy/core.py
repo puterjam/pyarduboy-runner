@@ -124,7 +124,8 @@ class PyArduboy:
         game_path: str,
         core_path: Optional[str] = None,
         core_name: Optional[str] = None,
-        target_fps: int = TARGET_FPS
+        target_fps: int = TARGET_FPS,
+        retro_path: Optional[str] = None
     ):
         """
         初始化 PyArduboy
@@ -135,6 +136,8 @@ class PyArduboy:
             core_name: 核心名称 (arduous/ardens)，用于自动查找
                       如果同时指定 core_path 和 core_name，core_path 优先
             target_fps: 目标帧率，默认 60 FPS
+            retro_path: 模拟器工作目录（可选，默认为当前工作目录）
+                       存档将保存到 {retro_path}/saves/{游戏名}/ 目录下
         """
         # 自动查找 core_path
         if core_path is None:
@@ -146,7 +149,7 @@ class PyArduboy:
         self.frame_time = 1.0 / target_fps
 
         # LibRetro 桥接层
-        self.bridge = LibretroBridge(core_path, game_path)
+        self.bridge = LibretroBridge(core_path, game_path, retro_path=retro_path)
 
         # 驱动插件
         self.video_driver: Optional[VideoDriver] = None
@@ -394,3 +397,89 @@ class PyArduboy:
         """上下文管理器出口"""
         _ = exc_type, exc_val, exc_tb  # 未使用，但需要符合上下文管理器协议
         self.cleanup()
+
+    # ==================== 存档功能 ====================
+
+    def save_state(self, slot: int = 0) -> bool:
+        """
+        保存游戏状态到指定槽位
+
+        存档文件保存在 {retro_path}/saves/{游戏名}/slot{槽位号}.sav
+
+        Args:
+            slot: 存档槽位（0-99），默认为 0
+
+        Returns:
+            保存成功返回 True，失败返回 False
+        """
+        return self.bridge.save_state(slot)
+
+    def load_state(self, slot: int = 0) -> bool:
+        """
+        从指定槽位加载游戏状态
+
+        Args:
+            slot: 存档槽位（0-99），默认为 0
+
+        Returns:
+            加载成功返回 True，失败返回 False
+        """
+        return self.bridge.load_state(slot)
+
+    def quick_save(self) -> bool:
+        """
+        快速保存到内存（用于即时回放/倒带）
+
+        Returns:
+            保存成功返回 True，失败返回 False
+        """
+        return self.bridge.quick_save()
+
+    def quick_load(self) -> bool:
+        """
+        快速加载（从内存）
+
+        Returns:
+            加载成功返回 True，失败返回 False
+        """
+        return self.bridge.quick_load()
+
+    def has_quick_save(self) -> bool:
+        """
+        检查是否有快速存档
+
+        Returns:
+            有快速存档返回 True，否则返回 False
+        """
+        return self.bridge.has_quick_save()
+
+    def list_save_states(self) -> list[int]:
+        """
+        列出所有可用的存档槽位
+
+        Returns:
+            可用槽位列表，例如 [0, 1, 3] 表示槽位 0、1、3 有存档
+        """
+        return self.bridge.list_save_states()
+
+    def delete_save_state(self, slot: int = 0) -> bool:
+        """
+        删除指定槽位的存档
+
+        Args:
+            slot: 存档槽位（0-99）
+
+        Returns:
+            删除成功返回 True，失败返回 False
+        """
+        return self.bridge.delete_save_state(slot)
+
+    @property
+    def retro_directory(self) -> Path:
+        """获取模拟器工作目录路径"""
+        return self.bridge.retro_path
+
+    @property
+    def save_directory(self) -> Path:
+        """获取当前游戏的存档目录路径 ({retro_path}/saves/{游戏名}/)"""
+        return self.bridge.save_dir

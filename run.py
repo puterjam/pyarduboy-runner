@@ -189,9 +189,12 @@ Examples:
         arduboy = PyArduboy(
             game_path=GAME_PATH,
             # core_name="arduous",  # 使用 arduous 核心
-            target_fps=60
+            target_fps=60,
+            retro_path="./retro"  # 模拟器工作目录
         )
-        print(f"Core: {arduboy.core_path} (auto-detected)\n")
+        print(f"Core: {arduboy.core_path} (auto-detected)")
+        print(f"Retro directory: {str(arduboy.retro_directory)}")
+        print(f"Save directory: {str(arduboy.save_directory)}\n")
     except ValueError as e:
         print(f"Error: {e}")
         return 1
