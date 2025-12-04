@@ -163,14 +163,14 @@ class LibretroBridge:
                 # 为不需要的路径在工作目录下创建子目录
                 system_dir = self.retro_path / 'system'
                 assets_dir = self.retro_path / 'assets'
-                saves_parent_dir = self.retro_path / 'saves'  # saves 父目录
+                saves_dir = self.retro_path / 'saves'  # saves 父目录
                 playlist_dir = self.retro_path / 'playlists'
 
                 path_driver = ExplicitPathDriver(
                     corepath=self.core_path,         # libretro 核心路径
                     system=str(system_dir),           # 系统目录（BIOS等）
                     assets=str(assets_dir),           # 核心资源目录
-                    save=str(saves_parent_dir),       # 存档父目录: {retro_path}/saves/
+                    save=str(saves_dir),       # 存档父目录: {retro_path}/saves/
                     playlist=str(playlist_dir)        # 播放列表目录
                 )
                 self.builder.with_paths(path_driver)  # 注意：方法名是 with_paths (复数)

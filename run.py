@@ -35,36 +35,30 @@ from pyarduboy.drivers.audio.pygame_mixer import PygameMixerDriver
 from pyarduboy.drivers.input.evdev import EvdevKeyboardDriver
 
 
-def setup_luma_driver(arduboy):
-    """设置 Luma.OLED 视频驱动"""
+def setup_luma_driver(arduboy, spi_speed_mhz=8):
+    """设置 Luma.OLED 视频驱动 (使用自定义驱动支持任意 SPI 频率)"""
     try:
-        # 尝试自动配置 OLED 设备
-        from luma.core.interface.serial import spi
-        from luma.oled.device import ssd1309
-        import RPi.GPIO as GPIO
+        # 使用自定义驱动,支持任意 SPI 频率(包括 10MHz)!
+        spi_speed_hz = int(spi_speed_mhz * 1_000_000)
 
-        # 设置 GPIO
-        GPIO.setmode(GPIO.BCM)
+        video_driver = LumaOLEDDriver(
+            device_type='ssd1309',
+            width=128,
+            height=64,
+            spi_speed_hz=spi_speed_hz,
+            gpio_DC=25,
+            gpio_RST=27,
+            dither_mode='none'
+        )
 
-        # SPI 配置：DC=25, RST=27
-        serial = spi(port=0, device=0, gpio_DC=25, gpio_RST=27, gpio=GPIO)
-        device = ssd1309(serial, width=128, height=64)
-
-        # 创建驱动并传入已配置的设备
-        video_driver = LumaOLEDDriver(device=device, width=128, height=64)
         arduboy.set_video_driver(video_driver)
 
-        print("✓ OLED video driver configured (SPI)")
-
-        # 保存设备和 GPIO 引用以便清理
-        arduboy._oled_device = device
-        arduboy._gpio = GPIO
-
+        print(f"✓ OLED video driver configured (Custom SPI @ {spi_speed_mhz} MHz)")
         return True
 
     except ImportError as e:
         print(f"Failed to import OLED dependencies: {e}")
-        print("Please install: pip3 install luma.oled")
+        print("Please install: pip3 install luma.oled spidev")
         print("Also ensure RPi.GPIO is available on Raspberry Pi")
         return False
     except Exception as e:
@@ -73,6 +67,8 @@ def setup_luma_driver(arduboy):
         print("  1. OLED is connected properly")
         print("  2. SPI is enabled (raspi-config)")
         print("  3. Running with sudo (required for GPIO access)")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -167,6 +163,12 @@ Examples:
                         help='Pygame 窗口缩放倍数 (default: 4)')
     parser.add_argument('--color', choices=['mono', 'green', 'amber', 'blue'], default='mono',
                         help='Pygame 颜色主题 (default: mono)')
+    parser.add_argument('--fps', type=int, default=60,
+                        help='游戏逻辑帧率 (default: 60, Arduboy 标准)')
+    parser.add_argument('--display-fps', type=int, default=150,
+                        help='显示刷新率 (default: 150, 建议 150+ 以支持时序抖动灰度)')
+    parser.add_argument('--spi-speed', type=int, default=8,
+                        help='SPI 总线频率(MHz): 8(保守) 10(推荐) 16+(快但可能黑屏) (default: 8)')
 
     args = parser.parse_args()
 
@@ -189,7 +191,8 @@ Examples:
         arduboy = PyArduboy(
             game_path=GAME_PATH,
             # core_name="arduous",  # 使用 arduous 核心
-            target_fps=60,
+            target_fps=args.fps,  # 游戏逻辑帧率
+            display_fps=args.display_fps,  # 显示刷新率
             retro_path="./retro"  # 模拟器工作目录
         )
         print(f"Core: {arduboy.core_path} (auto-detected)")
@@ -215,7 +218,7 @@ Examples:
 
     # 视频驱动
     if VIDEO_DRIVER == 'luma':
-        if not setup_luma_driver(arduboy):
+        if not setup_luma_driver(arduboy, spi_speed_mhz=args.spi_speed):
             return 1
     elif VIDEO_DRIVER == 'pygame':
         if not setup_pygame_driver(arduboy, scale=args.scale, color_mode=args.color):
