@@ -36,6 +36,7 @@ class CustomSPISerial:
             import time
             time.sleep(0.01)
             self._gpio.output(self._RST, self._gpio.HIGH)
+            self.command(0x81, 0xFF)  # 最大对比度
 
     def command(self, *cmd):
         """发送命令到 OLED"""

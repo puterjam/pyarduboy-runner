@@ -24,7 +24,7 @@ import argparse
 sys.path.insert(0, os.path.dirname(__file__))
 
 from pyarduboy import PyArduboy
-from pyarduboy.drivers.video.luma import LumaOLEDDriver
+from pyarduboy.drivers.video.luma_custom import LumaCustomSPIDriver as LumaOLEDDriver
 from pyarduboy.drivers.video.pygame import PygameDriver
 
 from pyarduboy.drivers.audio.alsa import AlsaAudioDriver
@@ -165,8 +165,8 @@ Examples:
                         help='Pygame 颜色主题 (default: mono)')
     parser.add_argument('--fps', type=int, default=60,
                         help='游戏逻辑帧率 (default: 60, Arduboy 标准)')
-    parser.add_argument('--display-fps', type=int, default=150,
-                        help='显示刷新率 (default: 150, 建议 150+ 以支持时序抖动灰度)')
+    parser.add_argument('--display-fps', type=int, default=128,
+                        help='显示刷新率 (default: 128, 建议 128+ 以支持时序抖动灰度)')
     parser.add_argument('--spi-speed', type=int, default=8,
                         help='SPI 总线频率(MHz): 8(保守) 10(推荐) 16+(快但可能黑屏) (default: 8)')
 
