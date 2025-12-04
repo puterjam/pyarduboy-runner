@@ -220,8 +220,9 @@ class PygameDriver(VideoDriver):
                 fps = self.clock.get_fps()
                 self.pygame.display.set_caption(f"{self.caption} - FPS: {fps:.1f}")
 
-            # 时钟 tick（60 FPS 目标，匹配 Ardens）
-            self.clock.tick(60)
+            # 注意：不要在这里调用 clock.tick()，帧率控制由 PyArduboy.run() 负责
+            # 调用 tick(0) 仅用于更新 FPS 计算，不做延迟
+            self.clock.tick()
 
         except Exception as e:
             # 只在第一次错误时打印，避免刷屏
