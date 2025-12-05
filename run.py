@@ -47,6 +47,7 @@ def setup_luma_driver(arduboy, spi_speed_mhz=8, refresh_hz=158):
             spi_speed_hz=spi_speed_hz,
             gpio_DC=25,
             gpio_RST=27,
+            gray_mode=False,
             refresh_hz=refresh_hz
         )
 
@@ -164,7 +165,7 @@ Examples:
                         help='Pygame 颜色主题 (default: mono)')
     parser.add_argument('--fps', type=int, default=60,
                         help='游戏逻辑帧率 (default: 60, ArduboyG 三平面刷新率)')
-    parser.add_argument('--spi-speed', type=int, default=9,
+    parser.add_argument('--spi-speed', type=int, default=8,
                         help='SPI 总线频率(MHz): 8(保守) 10(推荐) 16+(快但可能黑屏) (default: 8)')
     parser.add_argument('--refresh-hz', type=int, default=194,
                         help='灰度模式 Plane 刷新频率(Hz): 控制灰度层切换速度 (default: 180)')
