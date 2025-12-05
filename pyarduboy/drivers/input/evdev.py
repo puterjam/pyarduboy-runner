@@ -25,6 +25,8 @@ def _get_default_key_map():
         ecodes.KEY_S: 'down',
         ecodes.KEY_A: 'left',
         ecodes.KEY_D: 'right',
+        ecodes.KEY_G: 'select',
+        ecodes.KEY_H: 'start',
         ecodes.KEY_K: 'a',
         ecodes.KEY_J: 'b',
         ecodes.KEY_R: 'reset',  # R 键重置游戏
@@ -79,6 +81,8 @@ class EvdevKeyboardDriver(InputDriver):
             'down': False,
             'left': False,
             'right': False,
+            'select': False,
+            'start': False,
             'a': False,
             'b': False,
             'reset': False,
@@ -242,6 +246,8 @@ def _get_arrow_key_map():
         ecodes.KEY_RIGHT: 'right',
         ecodes.KEY_X: 'a',
         ecodes.KEY_Z: 'b',
+        ecodes.KEY_G: 'select',
+        ecodes.KEY_H: 'start',
         ecodes.KEY_R: 'reset',  # R 键重置游戏
     }
 
