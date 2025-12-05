@@ -24,13 +24,11 @@ import argparse
 sys.path.insert(0, os.path.dirname(__file__))
 
 from pyarduboy import PyArduboy
-from pyarduboy.drivers.video.luma_custom import LumaCustomSPIDriver as LumaOLEDDriver
+from pyarduboy.drivers.video.luma_gray import LumaGrayDriver as LumaOLEDDriver
 from pyarduboy.drivers.video.pygame import PygameDriver
 
-from pyarduboy.drivers.video.null import NullVideoDriver
 from pyarduboy.drivers.audio.alsa import AlsaAudioDriver
 from pyarduboy.drivers.audio.null import NullAudioDriver
-from pyarduboy.drivers.audio.pyaudio import PyAudioDriver
 from pyarduboy.drivers.audio.pygame_mixer import PygameMixerDriver
 
 from pyarduboy.drivers.input.evdev import EvdevKeyboardDriver

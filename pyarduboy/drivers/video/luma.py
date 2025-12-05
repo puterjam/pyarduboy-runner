@@ -130,22 +130,7 @@ class LumaOLEDDriver(VideoDriver):
             # 转换为 PIL Image
             img = Image.fromarray(frame_buffer, 'RGB')
 
-            # 转换为灰度
-            gray_img = img.convert('L')
-
-            # 根据抖动模式转换为 1-bit（黑白）
-            if self.dither_mode == 'none':
-                # 无抖动,使用固定阈值 (减少闪烁)
-                bw_img = gray_img.point(lambda x: 255 if x > 128 else 0, mode='1')
-            elif self.dither_mode == 'floyd':
-                # Floyd-Steinberg 抖动 (会闪烁)
-                bw_img = gray_img.convert('1', dither=Image.FLOYDSTEINBERG)
-            elif self.dither_mode == 'threshold':
-                # 自适应阈值
-                bw_img = gray_img.point(lambda x: 255 if x > 192 else 0, mode='1')
-            else:
-                # 默认: 简单阈值
-                bw_img = gray_img.point(lambda x: 255 if x > 128 else 0, mode='1')
+            bw_img = img.convert('L').convert('1')
 
             # 显示到 OLED
             self.device.display(bw_img)
