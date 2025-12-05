@@ -46,6 +46,8 @@ class PygameKeyboardDriver(InputDriver):
             pygame.K_RIGHT: 'right',
             pygame.K_z: 'a',
             pygame.K_x: 'b',
+            pygame.K_g: 'select',
+            pygame.K_h: 'start',
             pygame.K_r: 'reset',
         }
 
@@ -142,6 +144,8 @@ class PygameKeyboardDriverWASD(PygameKeyboardDriver):
             pygame.K_s: 'down',
             pygame.K_a: 'left',
             pygame.K_d: 'right',
+            pygame.K_g: 'select',
+            pygame.K_h: 'start',
             pygame.K_j: 'a',
             pygame.K_k: 'b',
             pygame.K_r: 'reset',

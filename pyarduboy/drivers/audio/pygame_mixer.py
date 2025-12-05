@@ -37,9 +37,9 @@ class PygameMixerDriver(AudioDriver):
 
     def __init__(
         self,
-        sample_rate: int = 50000,  # 匹配 Ardens: 16MHz / 320
-        channels: int = 1,          # 单声道（Arduboy 硬件特性）
-        buffer_size: int = 2048,    # 降低延迟
+        sample_rate: int = 44100,  # 匹配 Ardens: 16MHz / 320
+        channels: int = 2,          # 单声道（Arduboy 硬件特性）
+        buffer_size: int = 4096,    # 降低延迟
         volume: float = 0.3
     ):
         super().__init__()

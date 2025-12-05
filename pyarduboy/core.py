@@ -39,6 +39,10 @@ class PyArduboy:
     SCREEN_HEIGHT = 64
     TARGET_FPS = 60
 
+    # Game Boy 屏幕配置
+    GB_SCREEN_WIDTH = 160
+    GB_SCREEN_HEIGHT = 144
+
     # 支持的核心列表 (优先级顺序)
     SUPPORTED_CORES = ["ardens", "arduous", "gearboy"]
 
@@ -144,8 +148,20 @@ class PyArduboy:
             core_path = self._find_core(core_name)
 
         self.core_path = core_path
+        self.core_name = core_name  # 保存核心名称
         self.game_path = game_path
         self.target_fps = target_fps  # 游戏逻辑帧率
+
+        # 提取核心名称（从路径中）
+        detected_core = Path(core_path).stem.replace("_libretro", "")
+
+        # 根据核心类型设置屏幕分辨率
+        if detected_core == "gearboy" or core_name == "gearboy":
+            self.screen_width = self.GB_SCREEN_WIDTH
+            self.screen_height = self.GB_SCREEN_HEIGHT
+        else:
+            self.screen_width = self.SCREEN_WIDTH
+            self.screen_height = self.SCREEN_HEIGHT
 
         # LibRetro 桥接层
         self.bridge = LibretroBridge(core_path, game_path, retro_path=retro_path)
@@ -202,7 +218,7 @@ class PyArduboy:
 
         # 初始化视频驱动
         if self.video_driver:
-            if not self.video_driver.init(self.SCREEN_WIDTH, self.SCREEN_HEIGHT):
+            if not self.video_driver.init(self.screen_width, self.screen_height):
                 print("Failed to initialize video driver")
                 return False
 
@@ -245,9 +261,10 @@ class PyArduboy:
         # 提取核心名称
         core_name = Path(self.core_path).stem.replace("_libretro", "")
 
-        print(f"Starting Arduboy emulation...")
+        print(f"Starting emulation...")
         print(f"Core: {core_name}")
         print(f"Game: {self.game_path}")
+        print(f"Screen Resolution: {self.screen_width}x{self.screen_height}")
         print(f"Game Logic FPS: {self.target_fps}")
 
         if self.video_driver:

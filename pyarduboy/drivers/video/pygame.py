@@ -52,7 +52,8 @@ class PygameDriver(VideoDriver):
         fullscreen: bool = False,
         caption: str = "PyArduboy",
         show_fps: bool = True,
-        color_mode: str = 'mono'
+        color_mode: str = 'mono',
+        grayscale_mode: str = '4bit'  # '1bit', '4bit'
     ):
         super().__init__()
         self.scale = scale
@@ -60,6 +61,7 @@ class PygameDriver(VideoDriver):
         self.caption = caption
         self.show_fps = show_fps
         self.color_mode = color_mode
+        self.grayscale_mode = grayscale_mode
 
         # 获取颜色主题
         if color_mode not in self.COLOR_THEMES:
@@ -135,7 +137,7 @@ class PygameDriver(VideoDriver):
             self._frame_count = 0
 
             print(f"Pygame window initialized: {window_width}x{window_height}")
-            print(f"Scale: {self.scale}x, Color mode: {self.color_mode}")
+            print(f"Scale: {self.scale}x, Color mode: {self.color_mode}, Grayscale: {self.grayscale_mode}")
 
             return True
 
@@ -181,18 +183,34 @@ class PygameDriver(VideoDriver):
             else:
                 raise ValueError(f"Unsupported frame buffer shape: {frame_buffer.shape}")
 
-            # 转换为 1-bit 单色（阈值 128）
-            # Arduboy 是纯黑白显示，没有灰度
-            mono = gray > 128
-
             # 创建彩色图像（3 通道 RGB）
             colored = np.zeros((frame_buffer.shape[0], frame_buffer.shape[1], 3), dtype=np.uint8)
             bg = np.array(self.theme['background'], dtype=np.uint8)
             fg = np.array(self.theme['foreground'], dtype=np.uint8)
 
-            # 应用颜色主题（向量化操作，提高性能）
-            colored[~mono] = bg  # 背景色（像素关闭）
-            colored[mono] = fg   # 前景色（像素点亮）
+            if self.grayscale_mode == '4bit':
+                # 4-bit 灰阶模式（16级灰度）
+                # 将 0-255 映射到 0-15，然后再映射回 0-255 以实现 16 级灰度
+                gray_4bit = (gray >> 4).astype(np.uint8)  # 右移4位得到 0-15
+
+                # 将每个灰度级别映射到背景色和前景色之间的插值
+                # gray_4bit 范围: 0-15
+                # 0 = 完全背景色, 15 = 完全前景色
+                for level in range(16):
+                    mask = (gray_4bit == level)
+                    if np.any(mask):
+                        # 线性插值：level/15 的比例混合前景色和背景色
+                        ratio = level / 15.0
+                        interpolated_color = (bg * (1 - ratio) + fg * ratio).astype(np.uint8)
+                        colored[mask] = interpolated_color
+            else:
+                # 1-bit 单色模式（阈值 128）
+                # Arduboy 原始是纯黑白显示，没有灰度
+                mono = gray > 128
+
+                # 应用颜色主题（向量化操作，提高性能）
+                colored[~mono] = bg  # 背景色（像素关闭）
+                colored[mono] = fg   # 前景色（像素点亮）
 
             # 转置并创建副本（pygame 需要 (width, height, 3) 格式）
             colored_transposed = np.transpose(colored, (1, 0, 2)).copy()

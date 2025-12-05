@@ -147,6 +147,10 @@ Examples:
   # 使用 Pygame 桌面窗口
   python3 run.py game.hex -v pygame
 
+  # 指定使用特定核心
+  python3 run.py game.hex -v pygame --core ardens
+  python3 run.py game.gb -v pygame --core gearboy
+
   # Pygame 窗口，绿色主题，8x 缩放
   python3 run.py game.hex -v pygame --scale 8 --color green
 
@@ -169,6 +173,8 @@ Examples:
                         help='SPI 总线频率(MHz): 8(保守) 10(推荐) 16+(快但可能黑屏) (default: 8)')
     parser.add_argument('--refresh-hz', type=int, default=194,
                         help='灰度模式 Plane 刷新频率(Hz): 控制灰度层切换速度 (default: 180)')
+    parser.add_argument('--core', type=str, default=None,
+                        help='Libretro 核心名称 (如: ardens, gearboy, arduous) (default: 自动检测)')
 
     args = parser.parse_args()
 
@@ -188,13 +194,25 @@ Examples:
     print(f"Video: {VIDEO_DRIVER}\n")
 
     try:
-        arduboy = PyArduboy(
-            game_path=GAME_PATH,
-            # core_name="gearboy",  # 使用 arduous 核心
-            target_fps=args.fps,  # 游戏逻辑帧率
-            retro_path="./retro"  # 模拟器工作目录
-        )
-        print(f"Core: {arduboy.core_path} (auto-detected)")
+        # 构建 PyArduboy 参数
+        arduboy_kwargs = {
+            'game_path': GAME_PATH,
+            'target_fps': args.fps,
+            'retro_path': "./retro"
+        }
+
+        # 如果用户指定了核心，使用指定的核心
+        if args.core:
+            arduboy_kwargs['core_name'] = args.core
+
+        arduboy = PyArduboy(**arduboy_kwargs)
+
+        # 显示核心信息
+        if args.core:
+            print(f"Core: {arduboy.core_path} (specified: {args.core})")
+        else:
+            print(f"Core: {arduboy.core_path} (auto-detected)")
+        print(f"Screen Resolution: {arduboy.screen_width}x{arduboy.screen_height}")
         print(f"Retro directory: {str(arduboy.retro_directory)}")
         print(f"Save directory: {str(arduboy.save_directory)}\n")
     except ValueError as e:
