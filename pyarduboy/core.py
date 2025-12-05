@@ -40,7 +40,7 @@ class PyArduboy:
     TARGET_FPS = 60
 
     # 支持的核心列表 (优先级顺序)
-    SUPPORTED_CORES = ["ardens", "arduous"]
+    SUPPORTED_CORES = ["ardens", "arduous", "gearboy"]
 
     @staticmethod
     def _get_lib_extension() -> str:

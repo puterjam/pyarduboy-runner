@@ -25,6 +25,7 @@ ENV/
 # Git 子模块（arduous 通过 .gitmodules 管理）
 arduous/
 Ardens/
+Gearboy/
 
 # 编译输出
 core/*.so

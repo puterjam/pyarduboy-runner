@@ -47,7 +47,7 @@ def setup_luma_driver(arduboy, spi_speed_mhz=8, refresh_hz=158):
             spi_speed_hz=spi_speed_hz,
             gpio_DC=25,
             gpio_RST=27,
-            gray_mode=False,
+            gray_mode=True,
             refresh_hz=refresh_hz
         )
 
@@ -190,7 +190,7 @@ Examples:
     try:
         arduboy = PyArduboy(
             game_path=GAME_PATH,
-            # core_name="arduous",  # 使用 arduous 核心
+            # core_name="gearboy",  # 使用 arduous 核心
             target_fps=args.fps,  # 游戏逻辑帧率
             retro_path="./retro"  # 模拟器工作目录
         )
