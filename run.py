@@ -34,7 +34,7 @@ from pyarduboy.drivers.audio.pygame_mixer import PygameMixerDriver
 from pyarduboy.drivers.input.evdev import EvdevKeyboardDriver
 
 
-def setup_luma_driver(arduboy, spi_speed_mhz=8, refresh_hz=152):
+def setup_luma_driver(arduboy, spi_speed_mhz=8, refresh_hz=158):
     """设置 Luma.OLED 视频驱动 (使用自定义驱动支持任意 SPI 频率)"""
     try:
         # 使用自定义驱动,支持任意 SPI 频率(包括 10MHz)!
@@ -164,10 +164,10 @@ Examples:
                         help='Pygame 颜色主题 (default: mono)')
     parser.add_argument('--fps', type=int, default=60,
                         help='游戏逻辑帧率 (default: 60, ArduboyG 三平面刷新率)')
-    parser.add_argument('--spi-speed', type=int, default=8,
+    parser.add_argument('--spi-speed', type=int, default=9,
                         help='SPI 总线频率(MHz): 8(保守) 10(推荐) 16+(快但可能黑屏) (default: 8)')
-    parser.add_argument('--refresh-hz', type=int, default=152,
-                        help='灰度模式 Plane 刷新频率(Hz): 控制灰度层切换速度 (default: 152)')
+    parser.add_argument('--refresh-hz', type=int, default=194,
+                        help='灰度模式 Plane 刷新频率(Hz): 控制灰度层切换速度 (default: 180)')
 
     args = parser.parse_args()
 

@@ -3,6 +3,7 @@
 
 直接使用 spidev 设置任意 SPI 频率,然后传给 luma.oled 设备
 """
+from __future__ import annotations
 import numpy as np
 import time
 import os
@@ -129,6 +130,10 @@ class LumaGrayDriver(VideoDriver):
         dither_mode: 抖动模式 'none', 'floyd', 'threshold'
     """
 
+    SSD130X_CMD_COLUMNADDR = 0x21
+    SSD130X_CMD_PAGEADDR = 0x22
+    SSD130X_CMD_SETMULTIPLEX = 0xA8
+
     def __init__(
         self,
         device_type: str = 'ssd1309',
@@ -141,12 +146,14 @@ class LumaGrayDriver(VideoDriver):
         dither_mode: str = 'none',
         gray_mode: bool = True,
         planes: int = 3,
-        refresh_hz: int = 152
+        refresh_hz: int = 180,
+        sync_mode: str = 'park_row', # 'three_phase' | 'park_row' | 'slow_drive'
+        park_row: bool = True
     ):
         super().__init__()
         self.device_type = device_type
         self.display_width = width
-        self.display_height = height
+        self._panel_height = height  # OLED 真实高度
         self.spi_speed_hz = spi_speed_hz
         self.gpio_DC = gpio_DC
         self.gpio_RST = gpio_RST
@@ -157,9 +164,27 @@ class LumaGrayDriver(VideoDriver):
         self.gray_mode = gray_mode
         self.planes = planes
         self.refresh_hz = refresh_hz
-        
+        self.sync_mode = sync_mode  # 'three_phase' | 'park_row' | 'slow_drive'
+        self.park_row = park_row
+
         self.device = None
         self._serial = None
+
+        # Park row 配置: 牺牲最后一行
+        if self.park_row:
+            self.display_height = max(0, height - 1)
+            self._park_row_index = height - 1
+            self._park_page_index = self._park_row_index // 8
+        else:
+            self.display_height = height
+            self._park_row_index = None
+            self._park_page_index = None
+
+        self._render_height = self.display_height
+        self._render_pages = max(1, (self._render_height + 7) // 8)
+        self._device_pages = (self._panel_height + 7) // 8
+        self._display_page_cache = [None] * self._render_pages  # 当前 OLED 上的页面缓存
+        self._current_park_page = None  # 当前 OLED 上的 park 行数据
 
         # 灰度模式状态
         self._plane_counter = 0  # 当前 plane 索引 (0..planes-1)
@@ -201,14 +226,14 @@ class LumaGrayDriver(VideoDriver):
                 self.device = ssd1309(
                     self._serial,
                     width=self.display_width,
-                    height=self.display_height,
+                    height=self._panel_height,
                     rotate=self.rotate
                 )
             elif self.device_type == 'ssd1306':
                 self.device = ssd1306(
                     self._serial,
                     width=self.display_width,
-                    height=self.display_height,
+                    height=self._panel_height,
                     rotate=self.rotate
                 )
             else:
@@ -227,6 +252,108 @@ class LumaGrayDriver(VideoDriver):
             import traceback
             traceback.print_exc()
             return False
+
+    def _park_mode_enabled(self) -> bool:
+        """当前配置是否启用 park row 同步"""
+        return (
+            self.sync_mode == 'park_row'
+            and self.park_row
+            and self._serial is not None
+        )
+
+    def _pack_plane_pages(self, mask: np.ndarray) -> list[bytearray]:
+        """将 0/1 mask 按页打包成 SPI 字节"""
+        if mask.size == 0:
+            return [bytearray(self.display_width) for _ in range(self._render_pages)]
+
+        height = mask.shape[0]
+        width = mask.shape[1]
+        pages = max(1, (height + 7) // 8)
+        packed: list[bytearray] = []
+
+        for page in range(pages):
+            start = page * 8
+            end = min(start + 8, height)
+            block = mask[start:end, :]
+            row_bytes = bytearray(width)
+            for col in range(width):
+                bits = 0
+                for bit_idx, value in enumerate(block[:, col]):
+                    if value:
+                        bits |= (1 << bit_idx)
+                row_bytes[col] = bits
+            packed.append(row_bytes)
+
+        while len(packed) < self._render_pages:
+            packed.append(bytearray(width))
+
+        return packed
+
+    def _pack_park_row_page(self, row_bits: np.ndarray | None) -> bytearray:
+        """将 park row (单行) 转为 page 字节串"""
+        buf = bytearray(self.display_width)
+        if (
+            row_bits is None
+            or row_bits.size == 0
+            or self._park_row_index is None
+            or self._park_page_index is None
+        ):
+            return buf
+
+        row = row_bits[0]
+        bit_offset = self._park_row_index % 8
+        for col, value in enumerate(row):
+            if value:
+                buf[col] |= (1 << bit_offset)
+        return buf
+
+    def _enter_park_phase(self, park_page: bytearray) -> None:
+        """停在 park row，并按需刷新 park page"""
+        if not self._park_mode_enabled():
+            return
+
+        self._serial.command(self.SSD130X_CMD_SETMULTIPLEX, self._park_row_index)
+        self._serial.command(
+            self.SSD130X_CMD_PAGEADDR,
+            self._park_page_index,
+            self._park_page_index,
+        )
+        self._serial.command(self.SSD130X_CMD_COLUMNADDR, 0, self.display_width - 1)
+
+        serialized = bytes(park_page)
+        if self._current_park_page != serialized:
+            self._serial.data(list(park_page))
+            self._current_park_page = serialized
+
+    def _write_plane_pages(self, packed_pages: list[bytearray]) -> None:
+        """将 plane 数据写入 GDDRAM，同时刷新缓存"""
+        if self._serial is None:
+            return
+
+        start_ts = time.perf_counter()
+
+        for page_idx, page_bytes in enumerate(packed_pages):
+            current = bytes(page_bytes)
+            cached = self._display_page_cache[page_idx]
+            if cached == current:
+                continue
+
+            self._serial.command(self.SSD130X_CMD_PAGEADDR, page_idx, page_idx)
+            self._serial.command(self.SSD130X_CMD_COLUMNADDR, 0, self.display_width - 1)
+            self._serial.data(list(page_bytes))
+            self._display_page_cache[page_idx] = current
+
+        elapsed = (time.perf_counter() - start_ts) * 1000
+        # print(f"[park_row] page flush elapsed: {elapsed:.3f}ms")
+
+    def _restore_drive_phase(self) -> None:
+        """从 park 状态恢复正常扫描"""
+        if not self._park_mode_enabled():
+            return
+
+        self._serial.command(self.SSD130X_CMD_SETMULTIPLEX, self._panel_height - 1)
+        self._serial.command(self.SSD130X_CMD_PAGEADDR, 0x00, self._device_pages - 1)
+        self._serial.command(self.SSD130X_CMD_COLUMNADDR, 0, self.display_width - 1)
 
     def render(self, frame_buffer: np.ndarray) -> None:
         """渲染一帧到 OLED"""
@@ -275,7 +402,6 @@ class LumaGrayDriver(VideoDriver):
 
                 # 检查是否到达 plane 切换时间（允许小幅超时）
                 if current_time >= self._next_plane_time:
-                    print(f"Time since last plane switch: {time_since_last * 1000:.3f}ms")
                     # 切换到下一个 plane
                     self._plane_counter = (self._plane_counter + 1) % self.planes
                     self._last_plane_time = current_time
@@ -288,18 +414,33 @@ class LumaGrayDriver(VideoDriver):
                     # plane=0: levels>0 → 显示 levels 为 1,2,3 的像素
                     # plane=1: levels>1 → 显示 levels 为 2,3 的像素
                     # plane=2: levels>2 → 显示 levels 为 3 的像素
-                    mask = (levels > plane)
+                    mask = (levels > plane)                    
+                    if self._park_mode_enabled():
+                        # 拆分主画面与 park 行
+                        main_mask = mask[:self._render_height, :]
+                        packed_pages = self._pack_plane_pages(main_mask)
+                        park_slice = (
+                            mask[self._park_row_index:self._park_row_index + 1, :]
+                            if self._park_row_index is not None
+                            else None
+                        )
+                        park_page = self._pack_park_row_page(park_slice)
+                        self._enter_park_phase(park_page)
+                        self._write_plane_pages(packed_pages)
+                        self._restore_drive_phase()
+                    else:
+                        # 转成 0/255 的 2D 数组，再转成 1bit Image
+                        plane_bytes = (mask.astype(np.uint8) * 255)
+                        bw_img = Image.fromarray(plane_bytes, mode='L').convert('1')
 
-                    # 转成 0/255 的 2D 数组，再转成 1bit Image
-                    plane_bytes = (mask.astype(np.uint8) * 255)
-                    bw_img = Image.fromarray(plane_bytes, mode='L').convert('1')
+                        # [调试] 保存每个 plane（注释掉以提高性能）
+                        # save_image_debug(bw_img, prefix=f"plane{plane}")
 
-                    # [调试] 保存每个 plane（注释掉以提高性能）
-                    # save_image_debug(bw_img, prefix=f"plane{plane}")
-
-                    # 只在 plane 切换时才 display
-                    self.device.display(bw_img)
+                        # 只在 plane 切换时才 display
+                        self.device.display(bw_img)
+                        time.sleep(0.1)
                     
+                    # print(f"Time since last plane switch: {time_since_last * 1000:.3f}ms")
             else:
                 # 转换为 PIL Image
                 img = Image.fromarray(frame_buffer, 'RGB')
