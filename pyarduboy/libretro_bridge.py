@@ -251,7 +251,6 @@ class LibretroBridge:
 
             # 根据 pitch 判断像素格式
             bytes_per_pixel = pitch // width if width > 0 else 0
-
             # 根据像素格式处理
             if bytes_per_pixel == 2:
                 # RGB565 格式 (每像素 2 字节)

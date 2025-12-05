@@ -4,11 +4,12 @@
 直接使用 spidev 设置任意 SPI 频率,然后传给 luma.oled 设备
 """
 import numpy as np
+import time
 from PIL import Image
 from .base import VideoDriver
 
 
-class CustomSPISerial:
+class SPISerial:
     """
     自定义 SPI 串口类,支持任意频率
 
@@ -36,7 +37,9 @@ class CustomSPISerial:
             import time
             time.sleep(0.01)
             self._gpio.output(self._RST, self._gpio.HIGH)
-            self.command(0x81, 0xFF)  # 最大对比度
+
+            # 等待复位稳定
+            time.sleep(0.1)
 
     def command(self, *cmd):
         """发送命令到 OLED"""
@@ -86,7 +89,10 @@ class LumaCustomSPIDriver(VideoDriver):
         gpio_DC: int = 25,
         gpio_RST: int = 27,
         rotate: int = 0,
-        dither_mode: str = 'none'
+        dither_mode: str = 'none',
+        gray_mode: bool = True,
+        planes: int = 3,
+        refresh_hz: int = 300
     ):
         super().__init__()
         self.device_type = device_type
@@ -97,8 +103,19 @@ class LumaCustomSPIDriver(VideoDriver):
         self.gpio_RST = gpio_RST
         self.rotate = rotate
         self.dither_mode = dither_mode
+        
+        # 新增参数
+        self.gray_mode = gray_mode
+        self.planes = planes
+        self.refresh_hz = refresh_hz
+        
         self.device = None
         self._serial = None
+
+        # 灰度模式状态
+        self._plane_counter = 0  # 当前 plane 索引 (0..planes-1)
+        self._cached_levels = None  # 缓存的灰度 level 数组
+        self._last_frame_id = None  # 用于检测帧是否更新
 
     def init(self, width: int, height: int) -> bool:
         """初始化 OLED 显示设备"""
@@ -113,7 +130,7 @@ class LumaCustomSPIDriver(VideoDriver):
             GPIO.setmode(GPIO.BCM)
 
             # 创建自定义 SPI 串口(支持任意频率!)
-            self._serial = CustomSPISerial(
+            self._serial = SPISerial(
                 bus=0,
                 device=0,
                 gpio_DC=self.gpio_DC,
@@ -140,7 +157,7 @@ class LumaCustomSPIDriver(VideoDriver):
             else:
                 print(f"Unsupported device type: {self.device_type}")
                 return False
-
+            
             print(f"✓ Custom OLED initialized: {self.display_width}x{self.display_height} @ {self.spi_speed_hz/1e6:.1f} MHz")
             self._running = True
             return True
@@ -160,20 +177,40 @@ class LumaCustomSPIDriver(VideoDriver):
             return
 
         try:
-            # 转换为 PIL Image
-            img = Image.fromarray(frame_buffer, 'RGB')
+            # 先统一做成灰度 ndarray
+            # frame_buffer: H x W x 3, uint8
+            rgb = frame_buffer.astype(np.uint8)
+            # 简单加权：0.299R + 0.587G + 0.114B
+            gray = (0.299 * rgb[..., 0] +
+                    0.587 * rgb[..., 1] +
+                    0.114 * rgb[..., 2]).astype(np.uint8)
+            
+            if self.gray_mode and self.planes >= 2:
+                # ------ 时间灰度模式（ArduboyG 风格）------
+                # 先把灰度映射到 0..3
+                # 0..63 → 0, 64..127 → 1, 128..191 → 2, 192..255 → 3
+                levels = (gray.astype(np.uint16) * 4 // 256).astype(np.uint8)  # 2bit 灰度
+                
+                plane_dt = 1.0 / max(self.refresh_hz, 1)
 
-            # 转换为灰度
-            gray_img = img.convert('L')
+                for plane in range(self.planes):
+                    # 对应 ArduboyG 的 planeColor：
+                    # L4_Triplane: bit = (color > plane)
+                    mask = (levels > plane)
+                    
+                    # 转成 0/255 的 2D 数组，再转成 1bit Image
+                    plane_bytes = (mask.astype(np.uint8) * 255)
+                    bw_img = Image.fromarray(plane_bytes, mode='L').convert('1')
 
-            # 根据抖动模式转换为 1-bit
-            if self.dither_mode == 'none':
-                bw_img = gray_img.point(lambda x: 255 if x > 128 else 0, mode='1')
-            elif self.dither_mode == 'floyd':
-                bw_img = gray_img.convert('1', dither=Image.FLOYDSTEINBERG)
-            elif self.dither_mode == 'threshold':
-                bw_img = gray_img.point(lambda x: 255 if x > 192 else 0, mode='1')
+                    self.device.display(bw_img)
+                    time.sleep(plane_dt)
+
             else:
+                # 转换为 PIL Image
+                img = Image.fromarray(frame_buffer, 'RGB')
+
+                # 转换为灰度
+                gray_img = img.convert('L')
                 bw_img = gray_img.point(lambda x: 255 if x > 128 else 0, mode='1')
 
             # 显示到 OLED

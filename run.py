@@ -27,6 +27,7 @@ from pyarduboy import PyArduboy
 from pyarduboy.drivers.video.luma_custom import LumaCustomSPIDriver as LumaOLEDDriver
 from pyarduboy.drivers.video.pygame import PygameDriver
 
+from pyarduboy.drivers.video.null import NullVideoDriver
 from pyarduboy.drivers.audio.alsa import AlsaAudioDriver
 from pyarduboy.drivers.audio.null import NullAudioDriver
 from pyarduboy.drivers.audio.pyaudio import PyAudioDriver
@@ -47,8 +48,7 @@ def setup_luma_driver(arduboy, spi_speed_mhz=8):
             height=64,
             spi_speed_hz=spi_speed_hz,
             gpio_DC=25,
-            gpio_RST=27,
-            dither_mode='none'
+            gpio_RST=27
         )
 
         arduboy.set_video_driver(video_driver)
@@ -164,9 +164,7 @@ Examples:
     parser.add_argument('--color', choices=['mono', 'green', 'amber', 'blue'], default='mono',
                         help='Pygame 颜色主题 (default: mono)')
     parser.add_argument('--fps', type=int, default=60,
-                        help='游戏逻辑帧率 (default: 60, Arduboy 标准)')
-    parser.add_argument('--display-fps', type=int, default=128,
-                        help='显示刷新率 (default: 128, 建议 128+ 以支持时序抖动灰度)')
+                        help='游戏逻辑帧率 (default: 156, ArduboyG 三平面刷新率)')
     parser.add_argument('--spi-speed', type=int, default=8,
                         help='SPI 总线频率(MHz): 8(保守) 10(推荐) 16+(快但可能黑屏) (default: 8)')
 
@@ -192,7 +190,6 @@ Examples:
             game_path=GAME_PATH,
             # core_name="arduous",  # 使用 arduous 核心
             target_fps=args.fps,  # 游戏逻辑帧率
-            display_fps=args.display_fps,  # 显示刷新率
             retro_path="./retro"  # 模拟器工作目录
         )
         print(f"Core: {arduboy.core_path} (auto-detected)")

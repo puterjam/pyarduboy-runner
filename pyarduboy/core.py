@@ -125,7 +125,6 @@ class PyArduboy:
         core_path: Optional[str] = None,
         core_name: Optional[str] = None,
         target_fps: int = TARGET_FPS,
-        display_fps: Optional[int] = None,
         retro_path: Optional[str] = None
     ):
         """
@@ -137,7 +136,6 @@ class PyArduboy:
             core_name: 核心名称 (arduous/ardens)，用于自动查找
                       如果同时指定 core_path 和 core_name，core_path 优先
             target_fps: 游戏逻辑帧率，默认 60 FPS
-            display_fps: 显示刷新率，默认与 target_fps 相同 (可设为 150+ 以支持灰度)
             retro_path: 模拟器工作目录（可选，默认为当前工作目录）
                        存档将保存到 {retro_path}/saves/{游戏名}/ 目录下
         """
@@ -148,8 +146,6 @@ class PyArduboy:
         self.core_path = core_path
         self.game_path = game_path
         self.target_fps = target_fps  # 游戏逻辑帧率
-        self.display_fps = display_fps if display_fps is not None else target_fps  # 显示刷新率
-        self.frame_time = 1.0 / self.display_fps  # 主循环按显示帧率运行
 
         # LibRetro 桥接层
         self.bridge = LibretroBridge(core_path, game_path, retro_path=retro_path)
@@ -161,7 +157,6 @@ class PyArduboy:
 
         # 运行状态
         self._running = False
-        self._frame_count = 0
         self._logic_frame_count = 0  # 游戏逻辑帧计数
         self._start_time = 0
         self._last_frame = None  # 缓存最后一帧,用于帧重复
@@ -245,6 +240,7 @@ class PyArduboy:
         self._logic_frame_count = 0
         self._start_time = time.time()
         self._logic_accumulator = 0.0  # 累积的逻辑时间
+        last_time = time.perf_counter()
 
         # 提取核心名称
         core_name = Path(self.core_path).stem.replace("_libretro", "")
@@ -253,9 +249,7 @@ class PyArduboy:
         print(f"Core: {core_name}")
         print(f"Game: {self.game_path}")
         print(f"Game Logic FPS: {self.target_fps}")
-        print(f"Display Refresh FPS: {self.display_fps}")
-        if self.display_fps != self.target_fps:
-            print(f"  → Frame duplication: {self.display_fps / self.target_fps:.1f}x")
+
         if self.video_driver:
             print(f"Video Driver: {self.video_driver.__class__.__name__}")
         if self.audio_driver:
@@ -266,11 +260,14 @@ class PyArduboy:
 
         try:
             while self._running:
-                frame_start = time.time()
+                frame_start = time.perf_counter()
+                # 基于真实时间累加逻辑时间，避免固定步长误差
+                dt = frame_start - last_time
+                last_time = frame_start
+                self._logic_accumulator += dt
 
                 # 计算本帧应该执行几次游戏逻辑
                 logic_frame_time = 1.0 / self.target_fps
-                self._logic_accumulator += self.frame_time
 
                 # 处理输入 (每次显示帧都处理)
                 if self.input_driver:
@@ -319,13 +316,13 @@ class PyArduboy:
                         self.audio_driver.play_samples(samples)
 
                 # 检查是否达到最大帧数
-                if max_frames and self._logic_frame_count >= max_frames:
-                    break
+                # if max_frames and self._logic_frame_count >= max_frames:
+                #     break
 
                 # 帧率控制
-                frame_elapsed = time.time() - frame_start
-                if frame_elapsed < self.frame_time:
-                    time.sleep(self.frame_time - frame_elapsed)
+                # frame_elapsed = time.perf_counter() - frame_start
+                # if frame_elapsed < self.frame_time:
+                #     time.sleep(self.frame_time - frame_elapsed)
 
                 # 打印统计信息（每 300 显示帧）
                 if self._frame_count % 300 == 0:
@@ -372,9 +369,8 @@ class PyArduboy:
     def _print_stats(self) -> None:
         """打印运行统计信息"""
         elapsed = time.time() - self._start_time
-        display_fps = self._frame_count / elapsed if elapsed > 0 else 0
         logic_fps = self._logic_frame_count / elapsed if elapsed > 0 else 0
-        print(f"Display Frame {self._frame_count}: Display FPS={display_fps:.1f}, Logic FPS={logic_fps:.1f}")
+        print(f"Display Frame {self._frame_count}: Logic FPS={logic_fps:.1f}")
 
     def stop(self) -> None:
         """停止运行"""
