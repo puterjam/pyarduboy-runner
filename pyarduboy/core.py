@@ -159,7 +159,7 @@ class PyArduboy:
         self._running = False
         self._logic_frame_count = 0  # 游戏逻辑帧计数
         self._start_time = 0
-        self._last_frame = None  # 缓存最后一帧,用于帧重复
+        self._last_frame = None  # 用于检测帧是否更新
 
     def set_video_driver(self, driver: VideoDriver) -> None:
         """
@@ -320,12 +320,13 @@ class PyArduboy:
                 #     break
 
                 # 帧率控制
-                # frame_elapsed = time.perf_counter() - frame_start
-                # if frame_elapsed < self.frame_time:
-                #     time.sleep(self.frame_time - frame_elapsed)
+                frame_elapsed = time.perf_counter() - frame_start
+                frame_time = logic_frame_time / 5 # 5 倍逻辑帧时间
+                if frame_elapsed < frame_time:
+                    time.sleep(frame_time - frame_elapsed)
 
-                # 打印统计信息（每 300 显示帧）
-                if self._frame_count % 300 == 0:
+                # 打印统计信息（每 500 core render 帧）
+                if self._frame_count % 500 == 0:
                     self._print_stats()
 
         except KeyboardInterrupt:
@@ -369,8 +370,9 @@ class PyArduboy:
     def _print_stats(self) -> None:
         """打印运行统计信息"""
         elapsed = time.time() - self._start_time
+        display_fps = self._frame_count / elapsed if elapsed > 0 else 0
         logic_fps = self._logic_frame_count / elapsed if elapsed > 0 else 0
-        print(f"Display Frame {self._frame_count}: Logic FPS={logic_fps:.1f}")
+        print(f"Display Frame {self._frame_count}: Core Render FPS={display_fps:.1f}, Game Logic FPS={logic_fps:.1f}")
 
     def stop(self) -> None:
         """停止运行"""

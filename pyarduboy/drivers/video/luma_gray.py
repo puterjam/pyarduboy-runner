@@ -141,7 +141,7 @@ class LumaGrayDriver(VideoDriver):
         dither_mode: str = 'none',
         gray_mode: bool = True,
         planes: int = 3,
-        refresh_hz: int = 180
+        refresh_hz: int = 152
     ):
         super().__init__()
         self.device_type = device_type
@@ -168,6 +168,11 @@ class LumaGrayDriver(VideoDriver):
 
         # 自适应阈值缓存（避免每帧剧烈变化）
         self._adaptive_thresholds = None
+
+        # Plane 切换时间控制（模拟硬件定时器）
+        self._last_plane_time = 0  # 上次切换 plane 的时间戳
+        self._next_plane_time = 0  # 目标下一次切换时间
+        self._plane_interval = 1.0 / self.refresh_hz  # 每个 plane 的时间间隔（秒）
 
     def init(self, width: int, height: int) -> bool:
         """初始化 OLED 显示设备"""
@@ -246,64 +251,38 @@ class LumaGrayDriver(VideoDriver):
                 # save_image_debug(gray, prefix="gray_0-255")
 
                 # ------ 时间灰度模式（ArduboyG 风格）------
-                # 先把灰度映射到 0..3
-
-                # 策略 1: 线性映射
-                # 0..63 → 0, 64..127 → 1, 128..191 → 2, 192..255 → 3
-                # levels = (gray.astype(np.uint16) * 4 // 256).astype(np.uint8)
-
-                # 策略 2: 调整阈值，增强中间灰度
-                # 0..48 → 0, 49..112 → 1, 113..192 → 2, 193..255 → 3
                 levels = np.zeros_like(gray)
                 levels[gray > 48] = 1
                 levels[gray > 112] = 2
                 levels[gray > 192] = 3
 
-                # 策略 3: 更激进的中间值增强
-                # 0..32 → 0, 33..96 → 1, 97..160 → 2, 161..255 → 3
-                # levels = np.zeros_like(gray)
-                # levels[gray > 32] = 1
-                # levels[gray > 96] = 2
-                # levels[gray > 160] = 3
+                # 模拟硬件定时器的 plane 切换
+                # STM32: 硬件定时器以 refresh_hz (156Hz) 触发 plane 切换
+                # 树莓派: 检查时间间隔，只在到达切换时间时才切换 plane
 
-                # 策略 4: Gamma 校正后映射 (增强暗部细节)
-                # gamma = 2.2
-                # gray_gamma = np.power(gray / 255.0, 1.0/gamma) * 255
-                # levels = (gray_gamma.astype(np.uint16) * 4 // 256).astype(np.uint8)
+                current_time = time.perf_counter()
+                if self._next_plane_time == 0:
+                    self._next_plane_time = current_time + self._plane_interval
+                    self._last_plane_time = current_time
 
-                # 策略 5: 自适应直方图均衡化（已禁用，会导致花屏）
-                # 根据实际图像的灰度分布，让每个 level 包含大约 25% 的像素
-                # sorted_gray = np.sort(gray.flatten())
-                # q1 = sorted_gray[len(sorted_gray) // 4]
-                # q2 = sorted_gray[len(sorted_gray) // 2]
-                # q3 = sorted_gray[len(sorted_gray) * 3 // 4]
-                # levels = np.zeros_like(gray)
-                # levels[gray > q1] = 1
-                # levels[gray > q2] = 2
-                # levels[gray > q3] = 3
-                # print(f"[DEBUG] Adaptive thresholds: {q1}, {q2}, {q3}")
+                # 若还没到下次切换时间，主动等待，稳定周期
+                if current_time < self._next_plane_time:
+                    sleep_duration = self._next_plane_time - current_time
+                    time.sleep(sleep_duration)
+                    current_time = time.perf_counter()
 
-                # 策略 6: 固定阈值，针对 Arduboy 游戏优化（当前使用）
-                # Arduboy 游戏通常是黑底白字，使用固定阈值更稳定
-                # levels = np.zeros_like(gray)
-                # levels[gray > 85] = 1   # 33% 亮度 → 深灰
-                # levels[gray > 170] = 2  # 67% 亮度 → 浅灰
-                # levels[gray > 220] = 3  # 86% 亮度 → 白色
+                time_since_last = current_time - self._last_plane_time
 
-                # [调试] 保存 levels 图像（0-3，放大到 0-255 以便查看）
-                # save_image_debug(levels * 85, prefix="levels_0-3")
+                # 检查是否到达 plane 切换时间（允许小幅超时）
+                if current_time >= self._next_plane_time:
+                    print(f"Time since last plane switch: {time_since_last * 1000:.3f}ms")
+                    # 切换到下一个 plane
+                    self._plane_counter = (self._plane_counter + 1) % self.planes
+                    self._last_plane_time = current_time
+                    self._next_plane_time = self._last_plane_time + self._plane_interval
 
-                # [调试] 统计每个 level 的像素数量
-                # unique, counts = np.unique(levels, return_counts=True)
-                # total_pixels = levels.size
-                # print(f"[DEBUG] Level distribution:")
-                # for lv, cnt in zip(unique, counts):
-                #     percentage = (cnt / total_pixels) * 100
-                #     print(f"  Level {lv}: {cnt:5d} pixels ({percentage:5.1f}%)")
+                    plane = self._plane_counter
 
-                plane_dt = 1.0 / max(self.refresh_hz, 1)
-
-                for plane in range(self.planes):
                     # 对应 ArduboyG 的 planeColor：
                     # L4_Triplane: bit = (color > plane)
                     # plane=0: levels>0 → 显示 levels 为 1,2,3 的像素
@@ -318,8 +297,8 @@ class LumaGrayDriver(VideoDriver):
                     # [调试] 保存每个 plane（注释掉以提高性能）
                     # save_image_debug(bw_img, prefix=f"plane{plane}")
 
+                    # 只在 plane 切换时才 display
                     self.device.display(bw_img)
-                    time.sleep(plane_dt)
                     
             else:
                 # 转换为 PIL Image

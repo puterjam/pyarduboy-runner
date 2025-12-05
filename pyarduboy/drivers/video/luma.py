@@ -130,6 +130,8 @@ class LumaOLEDDriver(VideoDriver):
             # 转换为 PIL Image
             img = Image.fromarray(frame_buffer, 'RGB')
 
+
+            img = img.convert('L')
             bw_img = img.convert('L').convert('1')
 
             # 显示到 OLED

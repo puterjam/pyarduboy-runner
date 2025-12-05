@@ -11,6 +11,8 @@ Arduboy 模拟器 - 使用 PyArduboy 架构
   J - A 按钮
   K - B 按钮
   R - Reset（重新加载游戏）
+  1 - 增加 refresh_hz (+1)
+  2 - 减少 refresh_hz (-1)
 
 注意:
   - Luma.OLED 驱动需要 root 权限访问键盘设备
@@ -32,6 +34,12 @@ from pyarduboy.drivers.audio.null import NullAudioDriver
 from pyarduboy.drivers.audio.pygame_mixer import PygameMixerDriver
 
 from pyarduboy.drivers.input.evdev import EvdevKeyboardDriver
+import threading
+
+
+# 全局变量用于动态调整 refresh_hz
+current_refresh_hz = 152
+refresh_hz_lock = threading.Lock()
 
 
 def setup_luma_driver(arduboy, spi_speed_mhz=8, refresh_hz=152):
