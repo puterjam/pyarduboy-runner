@@ -30,6 +30,9 @@ from pyarduboy.drivers.video.pygame import PygameDriver
 from pyarduboy.drivers.audio.alsa import AlsaAudioDriver
 from pyarduboy.drivers.audio.null import NullAudioDriver
 from pyarduboy.drivers.audio.pygame_mixer import PygameMixerDriver
+from pyarduboy.drivers.audio.pyaudio import PyAudioDriver
+
+
 
 from pyarduboy.drivers.input.evdev import EvdevKeyboardDriver
 
@@ -249,7 +252,7 @@ Examples:
         # 桌面环境，使用 PyAudio（非阻塞 callback 模式，不影响 FPS）
         # 使用 Ardens 标准配置：50kHz, 单声道
         try:
-            audio_driver = PygameMixerDriver(volume=1)
+            audio_driver = PyAudioDriver(volume=1)
             arduboy.set_audio_driver(audio_driver)
             print("✓ Audio driver configured (PyAudio - 50kHz)")
         except ImportError:

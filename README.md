@@ -17,7 +17,7 @@
 ## 目录结构
 
 ```
-pyarduboy/
+pyarduboy-runner/
 ├── pyarduboy/                    # 核心 Python 库
 │   ├── __init__.py              # 库初始化
 │   ├── core.py                  # PyArduboy 核心类
