@@ -124,7 +124,7 @@ def setup_pygame_input(arduboy):
 def setup_alsa_audio(arduboy):
     """设置 ALSA 音频驱动"""
     try:
-        audio_driver = AlsaAudioDriver(volume=1)
+        audio_driver = AlsaAudioDriver()
         arduboy.set_audio_driver(audio_driver)
         print("✓ Audio driver configured (ALSA)")
         return True
