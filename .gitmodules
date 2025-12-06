@@ -1,6 +1,6 @@
-[submodule "arduous"]
-	path = arduous
-	url = https://github.com/libretro/arduous.git
+[submodule "ardens"]
+	path = Ardens
+	url = https://github.com/tiberiusbrown/Ardens.git
 [submodule "pyarduboy"]
 	path = pyarduboy
 	url = https://github.com/puterjam/pyarduboy.git

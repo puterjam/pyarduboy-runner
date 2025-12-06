@@ -1,6 +1,8 @@
-# PyArduboy - Arduboy 模拟器 Python 库
+# PyArduboy Runner - Arduboy 模拟器运行器
 
-在树莓派上运行 Arduboy 游戏的 Python 库，支持 OLED 显示屏输出。
+在树莓派上运行 Arduboy 游戏的完整解决方案，支持 OLED 显示屏输出。
+
+本项目使用 [pyarduboy](https://github.com/puterjam/pyarduboy) 作为核心库（通过 git submodule 管理）。
 
 ## 项目特点
 
@@ -82,18 +84,14 @@ pyarduboy/
 ### 方式 1：一键安装（推荐）
 
 ```bash
-# 克隆项目
+# 克隆项目（包含 submodules）
 cd /home/pi/workspace
-git clone <your-repo-url> pyarduboy
-cd pyarduboy
+git clone --recursive https://github.com/puterjam/pyarduboy-runner.git arduboy_pi
+cd arduboy_pi
 
 # 运行一键安装脚本
-chmod +x install.sh
-./install.sh
-
-# 设置 Python 虚拟环境
-chmod +x setup_venv.sh
-./setup_venv.sh
+chmod +x setup.sh
+./setup.sh
 ```
 
 ### 方式 2：手动安装
@@ -125,27 +123,17 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-#### 3. 编译 arduous_libretro 核心
+#### 3. 初始化 submodules 和编译核心
 
 ```bash
-# 克隆子模块（如果还没有）
-git clone https://github.com/libretro/arduous.git
+# 如果克隆时没有使用 --recursive，需要手动初始化 submodules
+git submodule update --init --recursive
 
-cd arduous
-mkdir -p build && cd build
+# 使用脚本自动下载或编译核心
+python3 download_core.py
 
-# 配置构建（Release 模式，性能优化）
-cmake -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_C_FLAGS='-O3 -march=native -mtune=native -ffast-math' \
-      -DCMAKE_CXX_FLAGS='-O3 -march=native -mtune=native -ffast-math' \
-      ..
-
-# 编译（使用 4 核加速）
-make -j4
-
-# 复制到 core 目录
-mkdir -p ../../core
-cp arduous_libretro.so ../../core/
+# 或者手动编译 Ardens 核心（推荐）
+./build_ardens_core.sh
 ```
 
 #### 4. 配置 SPI（用于 OLED）
@@ -280,9 +268,17 @@ PyArduboy(
 
 欢迎贡献代码、报告问题或提出建议！
 
+## 项目结构
+
+本项目分为两个仓库：
+
+- **[pyarduboy](https://github.com/puterjam/pyarduboy)** - 核心 Python 库（作为 submodule）
+- **[pyarduboy-runner](https://github.com/puterjam/pyarduboy-runner)** - 完整运行器和示例
+
 ## 相关链接
 
-- [arduous_libretro](https://github.com/libretro/arduous)
+- [PyArduboy 核心库](https://github.com/puterjam/pyarduboy)
+- [Ardens](https://github.com/tiberiusbrown/Ardens) - Arduboy 模拟器核心
 - [libretro.py](https://github.com/JesseTG/libretro.py)
 - [Luma.OLED](https://github.com/rm-hull/luma.oled)
 - [Arduboy](https://www.arduboy.com/)
