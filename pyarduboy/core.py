@@ -343,8 +343,8 @@ class PyArduboy:
                     time.sleep(frame_time - frame_elapsed)
 
                 # 打印统计信息（每 500 core render 帧）
-                if self._frame_count % 500 == 0:
-                    self._print_stats()
+                # if self._frame_count % 500 == 0:
+                #     self._print_stats()
 
         except KeyboardInterrupt:
             print("\n\nStopping emulation...")
@@ -389,7 +389,7 @@ class PyArduboy:
         elapsed = time.time() - self._start_time
         display_fps = self._frame_count / elapsed if elapsed > 0 else 0
         logic_fps = self._logic_frame_count / elapsed if elapsed > 0 else 0
-        print(f"Display Frame {self._frame_count}: Core Render FPS={display_fps:.1f}, Game Logic FPS={logic_fps:.1f}")
+        print(f"Display Frame {self._frame_count}: Core Loop FPS={display_fps:.1f}, Game Logic FPS={logic_fps:.1f}")
 
     def stop(self) -> None:
         """停止运行"""

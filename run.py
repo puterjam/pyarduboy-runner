@@ -47,7 +47,7 @@ def setup_luma_driver(arduboy, spi_speed_mhz=8, refresh_hz=158):
             spi_speed_hz=spi_speed_hz,
             gpio_DC=25,
             gpio_RST=27,
-            gray_mode=True,
+            gray_mode=False,
             refresh_hz=refresh_hz
         )
 
