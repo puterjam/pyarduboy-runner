@@ -163,14 +163,14 @@ python3 run.py roms/your_game.hex
 
 **硬件连接（SSD1309 SPI OLED）：**
 ```
-树莓派引脚        OLED 模块
-Pin 19 (MOSI)   → DIN
-Pin 23 (SCLK)   → CLK
-Pin 24 (CE0)    → CS
-Pin 22 (GPIO25) → DC
-Pin 13 (GPIO27) → RST
-Pin 1  (3.3V)   → VCC
-Pin 6  (GND)    → GND
+OLED  树莓派引脚
+RST → Pin 13 (GPIO27)
+ DC → Pin 22 (GPIO25)
+ CS → Pin 24 (CE0)
+CLK → Pin 23 (SCLK)
+DIN → Pin 19 (MOSI)
+GND → Pin 6  (GND)
+VCC → Pin 1  (3.3V) 
 ```
 
 **控制按键：**
